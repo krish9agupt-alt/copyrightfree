@@ -1,5 +1,4 @@
 import streamlit as st
-import tempfile
 import time
 
 # Page Config
@@ -9,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize Session State
+# Initialize Session State for Balance
 if "user_coins" not in st.session_state:
     st.session_state.user_coins = 10
 
@@ -60,7 +59,7 @@ with st.sidebar:
     if st.button("✅ Confirm Payment & Add Coins"):
         if len(utr_number) >= 4:
             st.session_state.user_coins += recharge_amount
-            st.success(f"🎉 Success! {recharge_amount} Coins added to your account.")
+            st.success(f"🎉 Success! {recharge_amount} Coins added.")
         else:
             st.warning("⚠️ Kripya valid Transaction ID / UTR number dalein!")
 
@@ -83,16 +82,15 @@ if uploaded_file is not None:
             progress_text = st.empty()
             progress_bar = st.progress(0)
             
-            # Fast progress bar animation
+            # Fast 1% to 100% Progress Animation
             for i in range(1, 101):
-                time.sleep(0.03)
+                time.sleep(0.02)
                 progress_bar.progress(i)
                 progress_text.markdown(f"🔄 **Video Editing Progress:** `{i}%` completed...")
             
             st.balloons()
             st.success(f"🎉 Video Successfully Processed! 10 Coins Deducted. Remaining Balance: {st.session_state.user_coins} Coins")
             
-            # Direct Download Option
             st.download_button(
                 label="📥 Download Edited Video",
                 data=uploaded_file.getvalue(),
