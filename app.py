@@ -3,7 +3,7 @@ import time
 
 # Page Config
 st.set_page_config(
-    page_title="Mobile Video Auto-Editor",
+    page_title="No Copyright",
     page_icon="🎬",
     layout="wide"
 )
@@ -18,13 +18,12 @@ st.markdown("""
     .coin-badge {
         background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
         color: #000;
-        padding: 10px 18px;
+        padding: 12px 20px;
         border-radius: 20px;
         font-weight: bold;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         display: inline-block;
-        margin-bottom: 12px;
-        width: 100%;
+        margin-bottom: 15px;
         text-align: center;
     }
     .pay-btn {
@@ -37,10 +36,13 @@ st.markdown("""
         border-radius: 6px;
         font-weight: bold;
         text-decoration: none;
-        margin-top: 5px;
     }
-    .pay-btn:hover {
-        background-color: #218838;
+    .plan-box {
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+        background-color: #f9f9f9;
+        margin-bottom: 10px;
     }
     .stButton>button {
         width: 100%;
@@ -53,45 +55,57 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# UPI & QR Details
 upi_id = "Masterki9g@ybl"
-
-# QR Code Direct URL from Provided Image
 qr_code_url = "https://i.ibb.co/L1562M0/image-11.png"
 
-# Sidebar - Wallet & Video Editing Plans
-with st.sidebar:
-    st.title("💰 Wallet Balance")
-    st.markdown(f'<div class="coin-badge">🪙 Balance: {st.session_state.user_coins} Coins</div>', unsafe_allow_html=True)
-    
-    st.info("🎁 **Bonus:** New User 10 Free Coins!\n\n🎬 **1 Video Edit = 10 Coins**")
-    
-    st.markdown("---")
-    st.subheader("📦 Video Editing Plans")
-    
-    # Plans List with Coins mapping
-    plans = [
-        {"name": "Day 1", "price": 20, "coins": 10},
-        {"name": "Day 3", "price": 45, "coins": 30},
-        {"name": "Day 7", "price": 99, "coins": 70},
-        {"name": "Day 14", "price": 179, "coins": 150},
-        {"name": "Day 28", "price": 249, "coins": 300},
-    ]
-    
-    for plan in plans:
-        col1, col2 = st.columns([1.3, 1])
-        with col1:
-            st.markdown(f"**{plan['name']} (₹{plan['price']})**  \n🪙 +{plan['coins']} Coins")
-        with col2:
-            pay_url = f"upi://pay?pa={upi_id}&pn=VideoEditor&am={plan['price']}&cu=INR"
-            st.markdown(f'<a href="{pay_url}" target="_blank" class="pay-btn">💳 Pay Now</a>', unsafe_allow_html=True)
-        st.markdown("<hr style='margin:6px 0;'>", unsafe_allow_html=True)
-        
-    st.markdown("---")
+# Header Section (Updated Name)
+st.title("🎬 No Copyright")
+
+# Balance Badge & Info
+col_bal1, col_bal2 = st.columns([1, 2])
+with col_bal1:
+    st.markdown(f'<div class="coin-badge">🪙 Wallet Balance: {st.session_state.user_coins} Coins</div>', unsafe_allow_html=True)
+with col_bal2:
+    st.info("🎁 **Bonus:** New User 10 Free Coins! | 🎬 **1 Video Edit = 10 Coins**")
+
+st.markdown("---")
+
+# Main Plans Section (Just below Header)
+st.subheader("📦 Select Video Editing Plan")
+
+plans = [
+    {"name": "Day 1", "price": 20, "coins": 10},
+    {"name": "Day 3", "price": 45, "coins": 30},
+    {"name": "Day 7", "price": 99, "coins": 70},
+    {"name": "Day 14", "price": 179, "coins": 150},
+    {"name": "Day 28", "price": 249, "coins": 300},
+]
+
+# Display Plans in Rows
+for plan in plans:
+    col1, col2, col3 = st.columns([2, 2, 1])
+    with col1:
+        st.markdown(f"**Plan {plan['name']}** (₹{plan['price']})")
+    with col2:
+        st.markdown(f"🪙 **+{plan['coins']} Coins**")
+    with col3:
+        pay_url = f"upi://pay?pa={upi_id}&pn=Krishna%20Kumar&am={plan['price']}&cu=INR"
+        st.markdown(f'<a href="{pay_url}" target="_blank" class="pay-btn">💳 Pay Now</a>', unsafe_allow_html=True)
+
+st.markdown("---")
+
+# QR Code & Manual Payment Section
+col_qr, col_claim = st.columns([1, 1.5])
+
+with col_qr:
     st.subheader("📲 Scan QR Code To Pay")
-    # PhonePe QR Code Image Display
-    st.image(qr_code_url, caption="Scan using GPay / PhonePe / Paytm", use_container_width=True)
-    
-    st.subheader("✅ Add Coins After Payment")
+    st.image(qr_code_url, caption="Scan using GPay / PhonePe / Paytm", width=250)
+    st.write("**UPI ID:**")
+    st.code(upi_id, language="text")
+
+with col_claim:
+    st.subheader("✅ Confirm Payment & Add Coins")
     selected_plan_idx = st.selectbox(
         "Choose Plan Paid For",
         range(len(plans)),
@@ -107,8 +121,10 @@ with st.sidebar:
         else:
             st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
 
-# Main App Interface
-st.title("🎬 Mobile Video Auto-Editor")
+st.markdown("---")
+
+# Video Editing Upload Section
+st.subheader("📤 Upload & Edit Video")
 st.write("अपनी वीडियो अपलोड करें (प्रति एडिट 10 कॉइंस कटेंगे)")
 
 uploaded_file = st.file_uploader("वीडियो सेलेक्ट करें (.mp4, .mov)", type=["mp4", "mov"])
@@ -118,7 +134,7 @@ if uploaded_file is not None:
     
     if st.button("🚀 Process & Edit Video (10 Coins)"):
         if st.session_state.user_coins < 10:
-            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Side menu se Plan buy karein.")
+            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Upar दिए plan se recharge karein.")
         else:
             st.session_state.user_coins -= 10
             
