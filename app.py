@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import tempfile
-from moviepy import VideoFileClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 # Page Config
 st.set_page_config(
