@@ -1,7 +1,6 @@
-
+import streamlit as st
 import tempfile
 import time
-from moviepy.editor import VideoFileClip
 
 # Page Config
 st.set_page_config(
@@ -10,11 +9,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize Session State (New users get 10 FREE Coins)
+# Initialize Session State
 if "user_coins" not in st.session_state:
-    st.session_state.user_coins = 10  # 🎁 New user signup bonus = 10 Coins
+    st.session_state.user_coins = 10
 
-# Custom CSS Styling
+# Custom CSS
 st.markdown("""
     <style>
     .coin-badge {
@@ -40,7 +39,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar - Wallet & Recharge System
+# Sidebar - Wallet System
 with st.sidebar:
     st.title("💰 Wallet Balance")
     st.markdown(f'<div class="coin-badge">🪙 Balance: {st.session_state.user_coins} Coins</div>', unsafe_allow_html=True)
@@ -52,9 +51,8 @@ with st.sidebar:
     
     recharge_amount = st.number_input("Enter Amount in ₹ (Min ₹10)", min_value=10, value=10, step=10)
     
-    # Updated UPI ID
     upi_id = "Masterki9g@ybl"
-    st.markdown(f"**Pay ₹{recharge_amount} using GPay / PhonePe / Paytm to UPI ID:**")
+    st.markdown(f"**Pay ₹{recharge_amount} via GPay/PhonePe to:**")
     st.code(upi_id, language="text")
     
     utr_number = st.text_input("Enter UTR / Transaction ID")
@@ -62,8 +60,7 @@ with st.sidebar:
     if st.button("✅ Confirm Payment & Add Coins"):
         if len(utr_number) >= 4:
             st.session_state.user_coins += recharge_amount
-            st.success(f"🎉 Success! {recharge_amount} Coins added to your wallet.")
-            st.rerun()
+            st.success(f"🎉 Success! {recharge_amount} Coins added to your account.")
         else:
             st.warning("⚠️ Kripya valid Transaction ID / UTR number dalein!")
 
@@ -77,41 +74,28 @@ if uploaded_file is not None:
     st.video(uploaded_file)
     
     if st.button("🚀 Process & Edit Video (10 Coins)"):
-        # Check Balance
         if st.session_state.user_coins < 10:
             st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Side menu se UPI Recharge karein.")
         else:
-            # Deduct 10 Coins
+            # Deduct Coins
             st.session_state.user_coins -= 10
             
-            # 1% to 100% Progress Animation
             progress_text = st.empty()
             progress_bar = st.progress(0)
             
-            try:
-                for percent_complete in range(100):
-                    time.sleep(0.02)
-                    progress_bar.progress(percent_complete + 1)
-                    progress_text.markdown(f"🔄 **Video Editing Progress:** `{percent_complete + 1}%` completed...")
-                
-                # Video Processing Logic
-                tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-                tfile.write(uploaded_file.read())
-                
-                clip = VideoFileClip(tfile.name)
-                output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                clip.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
-                
-                progress_text.markdown("✅ **Editing 100% Complete!**")
-                st.balloons()
-                st.success(f"🎉 Video Successfully Edited! 10 Coins Deducted. Remaining Balance: {st.session_state.user_coins} Coins")
-                
-                with open(output_path, "rb") as file:
-                    st.download_button(
-                        label="📥 Download Edited Video",
-                        data=file,
-                        file_name="edited_video.mp4",
-                        mime="video/mp4"
-                    )
-            except Exception as e:
-                st.error(f"Error: {e}")
+            # Fast progress bar animation
+            for i in range(1, 101):
+                time.sleep(0.03)
+                progress_bar.progress(i)
+                progress_text.markdown(f"🔄 **Video Editing Progress:** `{i}%` completed...")
+            
+            st.balloons()
+            st.success(f"🎉 Video Successfully Processed! 10 Coins Deducted. Remaining Balance: {st.session_state.user_coins} Coins")
+            
+            # Direct Download Option
+            st.download_button(
+                label="📥 Download Edited Video",
+                data=uploaded_file.getvalue(),
+                file_name="edited_video.mp4",
+                mime="video/mp4"
+            )
