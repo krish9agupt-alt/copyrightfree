@@ -71,7 +71,7 @@ if st.session_state.user is None:
             else:
                 st.warning("Enter a valid Mobile Number & Password")
 
-else:
+if st.session_state.user is not None:
     # Fetch latest user data from Database
     user_data = supabase.table("users").select("*").eq("id", st.session_state.user["id"]).execute().data[0]
     
@@ -195,7 +195,3 @@ else:
                     st.rerun()
         else:
             st.write("No pending payments for approval.")
-            st.balloons()
-            st.success(f"🎉 Payment Verified! {added_coins} Coins added to your wallet. Current Balance: {st.session_state.user_coins} Coins")
-        else:
-            st.warning("⚠️ Please enter a valid UTR / Transaction ID!")
