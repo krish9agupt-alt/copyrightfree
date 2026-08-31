@@ -10,9 +10,9 @@ st.set_page_config(
 
 # Initialize Session State
 if "user_coins" not in st.session_state:
-    st.session_state.user_coins = 10
+    st.session_state.user_coins = 10  # 🎁 New User Free Bonus
 
-# Custom CSS Styling
+# Custom CSS
 st.markdown("""
     <style>
     .coin-badge {
@@ -55,7 +55,10 @@ st.markdown("""
 
 upi_id = "Masterki9g@ybl"
 
-# Sidebar - Wallet & Plans System
+# QR Code Direct URL from Provided Image
+qr_code_url = "https://i.ibb.co/L1562M0/image-11.png"
+
+# Sidebar - Wallet & Video Editing Plans
 with st.sidebar:
     st.title("💰 Wallet Balance")
     st.markdown(f'<div class="coin-badge">🪙 Balance: {st.session_state.user_coins} Coins</div>', unsafe_allow_html=True)
@@ -63,35 +66,44 @@ with st.sidebar:
     st.info("🎁 **Bonus:** New User 10 Free Coins!\n\n🎬 **1 Video Edit = 10 Coins**")
     
     st.markdown("---")
-    st.subheader("📦 Select Editing Plan")
+    st.subheader("📦 Video Editing Plans")
     
-    # Plans Data
+    # Plans List with Coins mapping
     plans = [
-        {"days": "1 Day", "price": 20},
-        {"days": "3 Days", "price": 45},
-        {"days": "7 Days", "price": 99},
-        {"days": "14 Days", "price": 179},
-        {"days": "28 Days", "price": 249},
+        {"name": "Day 1", "price": 20, "coins": 10},
+        {"name": "Day 3", "price": 45, "coins": 30},
+        {"name": "Day 7", "price": 99, "coins": 70},
+        {"name": "Day 14", "price": 179, "coins": 150},
+        {"name": "Day 28", "price": 249, "coins": 300},
     ]
     
-    # Render Plans with Pay Now Redirect Buttons
     for plan in plans:
-        col1, col2 = st.columns([1.2, 1])
+        col1, col2 = st.columns([1.3, 1])
         with col1:
-            st.markdown(f"**Plan {plan['days']}**  \n₹{plan['price']}")
+            st.markdown(f"**{plan['name']} (₹{plan['price']})**  \n🪙 +{plan['coins']} Coins")
         with col2:
-            # Deep Link to redirect mobile UPI Apps directly
             pay_url = f"upi://pay?pa={upi_id}&pn=VideoEditor&am={plan['price']}&cu=INR"
             st.markdown(f'<a href="{pay_url}" target="_blank" class="pay-btn">💳 Pay Now</a>', unsafe_allow_html=True)
-        st.markdown("<hr style='margin:8px 0;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:6px 0;'>", unsafe_allow_html=True)
         
-    st.subheader("✅ Confirm Plan After Payment")
-    selected_plan = st.selectbox("Choose Plan Paid For", ["1 Day (₹20)", "3 Days (₹45)", "7 Days (₹99)", "14 Days (₹179)", "28 Days (₹249)"])
+    st.markdown("---")
+    st.subheader("📲 Scan QR Code To Pay")
+    # PhonePe QR Code Image Display
+    st.image(qr_code_url, caption="Scan using GPay / PhonePe / Paytm", use_container_width=True)
+    
+    st.subheader("✅ Add Coins After Payment")
+    selected_plan_idx = st.selectbox(
+        "Choose Plan Paid For",
+        range(len(plans)),
+        format_func=lambda i: f"{plans[i]['name']} - ₹{plans[i]['price']} ({plans[i]['coins']} Coins)"
+    )
     utr_number = st.text_input("Enter UTR / Transaction ID")
     
-    if st.button("Submit Payment Proof"):
+    if st.button("Submit & Claim Coins"):
         if len(utr_number) >= 4:
-            st.success("🎉 Payment Proof Submitted! Plan will be activated shortly.")
+            added_coins = plans[selected_plan_idx]["coins"]
+            st.session_state.user_coins += added_coins
+            st.success(f"🎉 Payment Verified! {added_coins} Coins added to your wallet.")
         else:
             st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
 
