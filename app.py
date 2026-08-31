@@ -12,7 +12,7 @@ st.set_page_config(
 if "user_coins" not in st.session_state:
     st.session_state.user_coins = 10
 
-# Custom CSS
+# Custom CSS Styling
 st.markdown("""
     <style>
     .coin-badge {
@@ -27,6 +27,21 @@ st.markdown("""
         width: 100%;
         text-align: center;
     }
+    .pay-btn {
+        display: block;
+        width: 100%;
+        background-color: #28a745;
+        color: white !important;
+        text-align: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        text-decoration: none;
+        margin-top: 5px;
+    }
+    .pay-btn:hover {
+        background-color: #218838;
+    }
     .stButton>button {
         width: 100%;
         background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
@@ -38,28 +53,45 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar - Wallet System
+upi_id = "Masterki9g@ybl"
+
+# Sidebar - Wallet & Plans System
 with st.sidebar:
     st.title("💰 Wallet Balance")
     st.markdown(f'<div class="coin-badge">🪙 Balance: {st.session_state.user_coins} Coins</div>', unsafe_allow_html=True)
     
-    st.info("🎁 **Bonus:** New User 10 Free Coins!\n\n📌 **Rate:** ₹1 = 1 Coin\n🎬 **1 Video Edit = 10 Coins**")
+    st.info("🎁 **Bonus:** New User 10 Free Coins!\n\n🎬 **1 Video Edit = 10 Coins**")
     
     st.markdown("---")
-    st.subheader("💳 UPI Recharge (Add Coins)")
+    st.subheader("📦 Select Editing Plan")
     
-    recharge_amount = st.number_input("Enter Amount in ₹ (Min ₹10)", min_value=10, value=10, step=10)
+    # Plans Data
+    plans = [
+        {"days": "1 Day", "price": 20},
+        {"days": "3 Days", "price": 45},
+        {"days": "7 Days", "price": 99},
+        {"days": "14 Days", "price": 179},
+        {"days": "28 Days", "price": 249},
+    ]
     
-    upi_id = "Masterki9g@ybl"
-    st.markdown(f"**Pay ₹{recharge_amount} via GPay/PhonePe to:**")
-    st.code(upi_id, language="text")
-    
+    # Render Plans with Pay Now Redirect Buttons
+    for plan in plans:
+        col1, col2 = st.columns([1.2, 1])
+        with col1:
+            st.markdown(f"**Plan {plan['days']}**  \n₹{plan['price']}")
+        with col2:
+            # Deep Link to redirect mobile UPI Apps directly
+            pay_url = f"upi://pay?pa={upi_id}&pn=VideoEditor&am={plan['price']}&cu=INR"
+            st.markdown(f'<a href="{pay_url}" target="_blank" class="pay-btn">💳 Pay Now</a>', unsafe_allow_html=True)
+        st.markdown("<hr style='margin:8px 0;'>", unsafe_allow_html=True)
+        
+    st.subheader("✅ Confirm Plan After Payment")
+    selected_plan = st.selectbox("Choose Plan Paid For", ["1 Day (₹20)", "3 Days (₹45)", "7 Days (₹99)", "14 Days (₹179)", "28 Days (₹249)"])
     utr_number = st.text_input("Enter UTR / Transaction ID")
     
-    if st.button("✅ Confirm Payment & Add Coins"):
+    if st.button("Submit Payment Proof"):
         if len(utr_number) >= 4:
-            st.session_state.user_coins += recharge_amount
-            st.success(f"🎉 Success! {recharge_amount} Coins added.")
+            st.success("🎉 Payment Proof Submitted! Plan will be activated shortly.")
         else:
             st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
 
@@ -74,7 +106,7 @@ if uploaded_file is not None:
     
     if st.button("🚀 Process & Edit Video (10 Coins)"):
         if st.session_state.user_coins < 10:
-            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Side menu se UPI Recharge karein.")
+            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Side menu se Plan buy karein.")
         else:
             st.session_state.user_coins -= 10
             
