@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize Session State for Balance
+# Initialize Session State
 if "user_coins" not in st.session_state:
     st.session_state.user_coins = 10
 
@@ -61,7 +61,7 @@ with st.sidebar:
             st.session_state.user_coins += recharge_amount
             st.success(f"🎉 Success! {recharge_amount} Coins added.")
         else:
-            st.warning("⚠️ Kripya valid Transaction ID / UTR number dalein!")
+            st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
 
 # Main App Interface
 st.title("🎬 Mobile Video Auto-Editor")
@@ -76,13 +76,11 @@ if uploaded_file is not None:
         if st.session_state.user_coins < 10:
             st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Side menu se UPI Recharge karein.")
         else:
-            # Deduct Coins
             st.session_state.user_coins -= 10
             
             progress_text = st.empty()
             progress_bar = st.progress(0)
             
-            # Fast 1% to 100% Progress Animation
             for i in range(1, 101):
                 time.sleep(0.02)
                 progress_bar.progress(i)
