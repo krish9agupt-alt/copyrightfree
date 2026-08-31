@@ -123,12 +123,18 @@ else:
     ]
 
     col_h1, col_h2, col_h3, col_h4 = st.columns([1, 1, 1, 1])
-    col_h1.markdown("**Plan**"); col_h2.markdown("**Days**"); col_h3.markdown("**Price**"); col_h4.markdown("**Coins**")
+    col_h1.markdown("**Plan**")
+    col_h2.markdown("**Days**")
+    col_h3.markdown("**Price**")
+    col_h4.markdown("**Coins**")
     st.markdown("<hr style='margin:2px 0;'>", unsafe_allow_html=True)
 
     for p in plans:
         c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
-        c1.write(f"📌 **{p['plan']}**"); c2.write(p['days']); c3.write(f"₹{p['price']}"); c4.write(f"🪙 +{p['coins']}")
+        c1.write(f"📌 **{p['plan']}**")
+        c2.write(p['days'])
+        c3.write(f"₹{p['price']}")
+        c4.write(f"🪙 +{p['coins']}")
 
     st.markdown("---")
 
