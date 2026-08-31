@@ -37,13 +37,6 @@ st.markdown("""
         font-weight: bold;
         text-decoration: none;
     }
-    .plan-box {
-        border: 1px solid #e0e0e0;
-        padding: 15px;
-        border-radius: 10px;
-        background-color: #f9f9f9;
-        margin-bottom: 10px;
-    }
     .stButton>button {
         width: 100%;
         background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
@@ -55,11 +48,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# UPI & QR Details
+# UPI Details
 upi_id = "Masterki9g@ybl"
-qr_code_url = "https://i.ibb.co/L1562M0/image-11.png"
 
-# Header Section (Updated Name)
+# Header Section
 st.title("🎬 No Copyright")
 
 # Balance Badge & Info
@@ -71,7 +63,42 @@ with col_bal2:
 
 st.markdown("---")
 
-# Main Plans Section (Just below Header)
+# 1. TOP SECTION: Video Editing Upload
+st.subheader("📤 Upload & Edit Video")
+st.write("अपनी वीडियो अपलोड करें (प्रति एडिट 10 कॉइंस कटेंगे)")
+
+uploaded_file = st.file_uploader("वीडियो सेलेक्ट करें (.mp4, .mov)", type=["mp4", "mov"])
+
+if uploaded_file is not None:
+    st.video(uploaded_file)
+    
+    if st.button("🚀 Process & Edit Video (10 Coins)"):
+        if st.session_state.user_coins < 10:
+            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Niche diye plan se recharge karein.")
+        else:
+            st.session_state.user_coins -= 10
+            
+            progress_text = st.empty()
+            progress_bar = st.progress(0)
+            
+            for i in range(1, 101):
+                time.sleep(0.02)
+                progress_bar.progress(i)
+                progress_text.markdown(f"🔄 **Video Editing Progress:** `{i}%` completed...")
+            
+            st.balloons()
+            st.success(f"🎉 Video Successfully Processed! 10 Coins Deducted. Remaining Balance: {st.session_state.user_coins} Coins")
+            
+            st.download_button(
+                label="📥 Download Edited Video",
+                data=uploaded_file.getvalue(),
+                file_name="edited_video.mp4",
+                mime="video/mp4"
+            )
+
+st.markdown("---")
+
+# 2. BOTTOM SECTION: Video Editing Plans
 st.subheader("📦 Select Video Editing Plan")
 
 plans = [
@@ -95,12 +122,14 @@ for plan in plans:
 
 st.markdown("---")
 
-# QR Code & Manual Payment Section
+# 3. QR Code & Manual Payment Section
 col_qr, col_claim = st.columns([1, 1.5])
 
 with col_qr:
     st.subheader("📲 Scan QR Code To Pay")
-    st.image(qr_code_url, caption="Scan using GPay / PhonePe / Paytm", width=250)
+    # Generating QR code directly on screen via Google Chart API (No broken links)
+    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa={upi_id}%26pn=Krishna%20Kumar"
+    st.image(qr_api_url, caption="Scan using GPay / PhonePe / Paytm", width=220)
     st.write("**UPI ID:**")
     st.code(upi_id, language="text")
 
@@ -120,38 +149,3 @@ with col_claim:
             st.success(f"🎉 Payment Verified! {added_coins} Coins added to your wallet.")
         else:
             st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
-
-st.markdown("---")
-
-# Video Editing Upload Section
-st.subheader("📤 Upload & Edit Video")
-st.write("अपनी वीडियो अपलोड करें (प्रति एडिट 10 कॉइंस कटेंगे)")
-
-uploaded_file = st.file_uploader("वीडियो सेलेक्ट करें (.mp4, .mov)", type=["mp4", "mov"])
-
-if uploaded_file is not None:
-    st.video(uploaded_file)
-    
-    if st.button("🚀 Process & Edit Video (10 Coins)"):
-        if st.session_state.user_coins < 10:
-            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Upar दिए plan se recharge karein.")
-        else:
-            st.session_state.user_coins -= 10
-            
-            progress_text = st.empty()
-            progress_bar = st.progress(0)
-            
-            for i in range(1, 101):
-                time.sleep(0.02)
-                progress_bar.progress(i)
-                progress_text.markdown(f"🔄 **Video Editing Progress:** `{i}%` completed...")
-            
-            st.balloons()
-            st.success(f"🎉 Video Successfully Processed! 10 Coins Deducted. Remaining Balance: {st.session_state.user_coins} Coins")
-            
-            st.download_button(
-                label="📥 Download Edited Video",
-                data=uploaded_file.getvalue(),
-                file_name="edited_video.mp4",
-                mime="video/mp4"
-            )
