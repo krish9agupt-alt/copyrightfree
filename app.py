@@ -26,17 +26,6 @@ st.markdown("""
         margin-bottom: 15px;
         text-align: center;
     }
-    .pay-btn {
-        display: block;
-        width: 100%;
-        background-color: #28a745;
-        color: white !important;
-        text-align: center;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-weight: bold;
-        text-decoration: none;
-    }
     .stButton>button {
         width: 100%;
         background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
@@ -65,16 +54,16 @@ st.markdown("---")
 
 # 1. TOP SECTION: Video Editing Upload
 st.subheader("📤 Upload & Edit Video")
-st.write("अपनी वीडियो अपलोड करें (प्रति एडिट 10 कॉइंस कटेंगे)")
+st.write("Upload your video (10 coins will be deducted per edit)")
 
-uploaded_file = st.file_uploader("वीडियो सेलेक्ट करें (.mp4, .mov)", type=["mp4", "mov"])
+uploaded_file = st.file_uploader("Select a video (.mp4, .mov)", type=["mp4", "mov"])
 
 if uploaded_file is not None:
     st.video(uploaded_file)
     
     if st.button("🚀 Process & Edit Video (10 Coins)"):
         if st.session_state.user_coins < 10:
-            st.error("❌ Balance Kam hai! 1 Video Edit ke liye 10 Coins chahiye. Niche diye plan se recharge karein.")
+            st.error("❌ Low Balance! You need 10 coins for 1 video edit. Please recharge using the QR code below.")
         else:
             st.session_state.user_coins -= 10
             
@@ -98,8 +87,8 @@ if uploaded_file is not None:
 
 st.markdown("---")
 
-# 2. BOTTOM SECTION: Video Editing Plans
-st.subheader("📦 Select Video Editing Plan")
+# 2. BOTTOM SECTION: Video Editing Plans Table
+st.subheader("📦 Video Editing Plans")
 
 plans = [
     {"name": "Day 1", "price": 20, "coins": 10},
@@ -109,25 +98,23 @@ plans = [
     {"name": "Day 28", "price": 249, "coins": 300},
 ]
 
-# Display Plans in Rows
+# Display Plans in clean columns
 for plan in plans:
-    col1, col2, col3 = st.columns([2, 2, 1])
+    col1, col2 = st.columns([1, 1])
     with col1:
-        st.markdown(f"**Plan {plan['name']}** (₹{plan['price']})")
+        st.markdown(f"📌 **Plan {plan['name']}** - ₹{plan['price']}")
     with col2:
         st.markdown(f"🪙 **+{plan['coins']} Coins**")
-    with col3:
-        pay_url = f"upi://pay?pa={upi_id}&pn=Krishna%20Kumar&am={plan['price']}&cu=INR"
-        st.markdown(f'<a href="{pay_url}" target="_blank" class="pay-btn">💳 Pay Now</a>', unsafe_allow_html=True)
+    st.markdown("<hr style='margin:4px 0;'>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 3. QR Code & Manual Payment Section
+# 3. QR Code & UTR Verification Section
 col_qr, col_claim = st.columns([1, 1.5])
 
 with col_qr:
     st.subheader("📲 Scan QR Code To Pay")
-    # Generating QR code directly on screen via Google Chart API (No broken links)
+    # Dynamic Google Chart QR API
     qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa={upi_id}%26pn=Krishna%20Kumar"
     st.image(qr_api_url, caption="Scan using GPay / PhonePe / Paytm", width=220)
     st.write("**UPI ID:**")
@@ -136,16 +123,17 @@ with col_qr:
 with col_claim:
     st.subheader("✅ Confirm Payment & Add Coins")
     selected_plan_idx = st.selectbox(
-        "Choose Plan Paid For",
+        "Choose Paid Plan",
         range(len(plans)),
         format_func=lambda i: f"{plans[i]['name']} - ₹{plans[i]['price']} ({plans[i]['coins']} Coins)"
     )
-    utr_number = st.text_input("Enter UTR / Transaction ID")
+    utr_number = st.text_input("Enter UTR / Transaction ID (12 Digits)")
     
     if st.button("Submit & Claim Coins"):
         if len(utr_number) >= 4:
             added_coins = plans[selected_plan_idx]["coins"]
             st.session_state.user_coins += added_coins
-            st.success(f"🎉 Payment Verified! {added_coins} Coins added to your wallet.")
+            st.balloons()
+            st.success(f"🎉 Payment Verified! {added_coins} Coins added to your wallet. Current Balance: {st.session_state.user_coins} Coins")
         else:
-            st.warning("⚠️ Valid Transaction ID / UTR number dalein!")
+            st.warning("⚠️ Please enter a valid UTR / Transaction ID!")
