@@ -1,5 +1,7 @@
 import streamlit as st
 import time
+import json
+import os
 
 # -----------------------------------------------------------------------------
 # 1. PAGE CONFIG & CUSTOM THEME
@@ -9,6 +11,32 @@ st.set_page_config(
     page_icon="🎬", 
     layout="centered"
 )
+
+# Configuration & Security
+ADMIN_EMAIL = "krish9agupt@gmail.com"
+ADMIN_PASSCODE = "Krish9A"
+USER_PASSCODE = "123456"
+UPI_ID = "krish9agupt@ybl"  # 👈 यहाँ अपना असली UPI ID बदलें (उदा. 993188xxxx@ybl)
+DB_FILE = "database.json"
+
+# Permanent Database Setup
+def load_db():
+    if not os.path.exists(DB_FILE):
+        default_db = {"users": {}, "pending_requests": []}
+        with open(DB_FILE, "w") as f:
+            json.dump(default_db, f)
+        return default_db
+    try:
+        with open(DB_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {"users": {}, "pending_requests": []}
+
+def save_db(db):
+    with open(DB_FILE, "w") as f:
+        json.dump(db, f, indent=4)
+
+db = load_db()
 
 st.markdown("""
     <style>
@@ -76,14 +104,11 @@ if "logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
-if "coins" not in st.session_state:
-    st.session_state.coins = 20
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
 
 if "selected_plan" not in st.session_state:
     st.session_state.selected_plan = None
-
-if "pending_requests" not in st.session_state:
-    st.session_state.pending_requests = []
 
 # -----------------------------------------------------------------------------
 # 2. HEADER
@@ -95,7 +120,8 @@ top_col1, top_col2 = st.columns([3, 1])
 
 with top_col1:
     if st.session_state.logged_in:
-        st.success(f"User: **{st.session_state.user_email}**")
+        role = "ADMIN" if st.session_state.is_admin else "USER"
+        st.success(f"[{role}] Logged in as: **{st.session_state.user_email}**")
     else:
         st.info("Please login to process videos.")
 
@@ -104,29 +130,49 @@ with top_col2:
         if st.button("Sign Out", type="secondary"):
             st.session_state.logged_in = False
             st.session_state.user_email = ""
+            st.session_state.is_admin = False
             st.rerun()
 
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. DEVICE LOGIN
+# 3. DEVICE LOGIN WITH PERMANENT COIN SAVE
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
     
     with st.form("login_form"):
         email = st.text_input("Email Address", placeholder="user@example.com")
-        passcode = st.text_input("Access Passcode", type="password", placeholder="Enter passcode (123456)")
+        passcode = st.text_input("Access Passcode", type="password", placeholder="Enter passcode")
         submit_button = st.form_submit_button("🚀 Enter Studio", type="primary")
 
         if submit_button:
-            if email and passcode == "123456":
+            clean_email = email.lower().strip()
+            
+            # Create user in Database if new
+            if clean_email and clean_email not in db["users"]:
+                db["users"][clean_email] = 20  # 20 Free Coins
+                save_db(db)
+
+            # Check Admin Login
+            if clean_email == ADMIN_EMAIL.lower() and passcode == ADMIN_PASSCODE:
                 st.session_state.logged_in = True
-                st.session_state.user_email = email
+                st.session_state.user_email = clean_email
+                st.session_state.is_admin = True
+                st.success("Welcome Admin! Accessing Dashboard...")
+                time.sleep(1)
+                st.rerun()
+            # Check Normal User Login
+            elif clean_email and passcode == USER_PASSCODE:
+                st.session_state.logged_in = True
+                st.session_state.user_email = clean_email
+                st.session_state.is_admin = False
                 st.success("Access Granted!")
                 time.sleep(1)
                 st.rerun()
-            elif not email:
+            elif clean_email == ADMIN_EMAIL.lower() and passcode != ADMIN_PASSCODE:
+                st.error("Incorrect Admin Passcode!")
+            elif not clean_email:
                 st.error("Please enter a valid email address.")
             else:
                 st.error("Invalid passcode! Enter '123456'.")
@@ -135,14 +181,20 @@ if not st.session_state.logged_in:
 # 4. DASHBOARD & TOOLS
 # -----------------------------------------------------------------------------
 else:
+    current_user = st.session_state.user_email
+    user_coins = db["users"].get(current_user, 20)
+
     metric_col1, metric_col2, metric_col3 = st.columns(3)
-    metric_col1.metric("Available Coins", f"🪙 {st.session_state.coins}")
+    metric_col1.metric("Available Coins", f"🪙 {user_coins}")
     metric_col2.metric("Account Status", "PRO Active")
     metric_col3.metric("Upload Limit", "200 MB")
 
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "⚙️ Admin Approval"])
+    if st.session_state.is_admin:
+        tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "⚙️ Admin Approval"])
+    else:
+        tab1, tab2 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins"])
 
     # --- TAB 1: VIDEO STUDIO ---
     with tab1:
@@ -172,8 +224,11 @@ else:
 
             st.write("")
             if st.button(f"🚀 Start Processing (Deduct 🪙 {required_coins} Coins)", type="primary"):
-                if st.session_state.coins >= required_coins:
-                    st.session_state.coins -= required_coins
+                if user_coins >= required_coins:
+                    # Deduct coins and update Permanent DB
+                    db["users"][current_user] -= required_coins
+                    save_db(db)
+                    
                     progress_bar = st.progress(0)
                     status_text = st.empty()
 
@@ -192,13 +247,15 @@ else:
                         file_name="processed_no_copyright_video.mp4",
                         mime="video/mp4"
                     )
+                    time.sleep(1)
+                    st.rerun()
                 else:
                     st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins. Please request coins in Buy tab.")
 
     # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
         st.header("⚡ Request Coins Recharge")
-        st.write("Select a package, scan QR code, and submit UTR for manual admin verification.")
+        st.write("Select a package, scan QR code, and submit UTR for admin verification.")
 
         plan_col1, plan_col2 = st.columns(2)
         plan_col3, plan_col4 = st.columns(2)
@@ -232,45 +289,57 @@ else:
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
-                # Displays your PhonePe QR code from GitHub
-                st.image("https://raw.githubusercontent.com/Anand993188/noncopyright/main/image_8.png", caption="PhonePe QR Code", width=200)
+                # Reliable Dynamic Dynamic UPI QR Code Generation
+                qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=upi://pay?pa={UPI_ID}%26pn=VideoStudio%26am={amount}%26cu=INR"
+                st.image(qr_api_url, caption=f"Scan to pay ₹{amount}", width=200)
 
             with pay_col2:
                 utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.", max_chars=12)
                 if st.button("SUBMIT FOR VERIFICATION", type="primary"):
                     if len(utr_number) == 12 and utr_number.isdigit():
-                        st.session_state.pending_requests.append({
-                            "user": st.session_state.user_email,
+                        db["pending_requests"].append({
+                            "user": current_user,
                             "utr": utr_number,
                             "amount": amount,
                             "coins": coins_to_add
                         })
-                        st.info("⏳ UTR submitted! Coins will be added after Admin verifies payment in Bank Statement.")
+                        save_db(db)
+                        st.info("⏳ UTR submitted! Coins will be added after Admin verifies payment.")
                         st.session_state.selected_plan = None
                     else:
                         st.error("Please enter a valid 12-digit numeric UTR Number.")
 
     # --- TAB 3: ADMIN APPROVAL PANEL ---
-    with tab3:
-        st.header("⚙️ Admin Payment Verification Panel")
-        st.caption("Cross-check UTR numbers with your PhonePe / Bank app before approving.")
+    if st.session_state.is_admin:
+        with tab3:
+            st.header("⚙️ Admin Payment Verification Panel")
+            st.caption("Cross-check UTR numbers with your PhonePe / Bank app before approving.")
 
-        if len(st.session_state.pending_requests) == 0:
-            st.write("No pending payment verification requests.")
-        else:
-            for idx, req in enumerate(st.session_state.pending_requests):
-                st.warning(f"**User:** {req['user']} | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}` | **Coins:** 🪙 {req['coins']}")
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    if st.button(f"✅ Approve & Add {req['coins']} Coins", key=f"app_{idx}"):
-                        st.session_state.coins += req["coins"]
-                        st.session_state.pending_requests.pop(idx)
-                        st.success(f"Payment Verified! Added {req['coins']} coins to account.")
-                        time.sleep(1)
-                        st.rerun()
-                with col_b:
-                    if st.button("❌ Reject Payment", key=f"rej_{idx}"):
-                        st.session_state.pending_requests.pop(idx)
-                        st.error("Payment rejected.")
-                        time.sleep(1)
-                        st.rerun()
+            pending_list = db.get("pending_requests", [])
+
+            if len(pending_list) == 0:
+                st.write("No pending payment verification requests.")
+            else:
+                for idx, req in enumerate(list(pending_list)):
+                    st.warning(f"**User:** {req['user']} | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}` | **Coins:** 🪙 {req['coins']}")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button(f"✅ Approve & Add {req['coins']} Coins", key=f"app_{idx}"):
+                            req_user = req["user"]
+                            coins_to_add = req["coins"]
+                            
+                            # Update User Coins in Permanent DB
+                            db["users"][req_user] = db["users"].get(req_user, 0) + coins_to_add
+                            db["pending_requests"].pop(idx)
+                            save_db(db)
+                            
+                            st.success(f"Payment Verified! Added {coins_to_add} coins to {req_user}.")
+                            time.sleep(1)
+                            st.rerun()
+                    with col_b:
+                        if st.button("❌ Reject Payment", key=f"rej_{idx}"):
+                            db["pending_requests"].pop(idx)
+                            save_db(db)
+                            st.error("Payment rejected.")
+                            time.sleep(1)
+                            st.rerun()
