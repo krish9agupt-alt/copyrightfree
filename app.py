@@ -5,7 +5,7 @@ import os
 import hashlib
 import numpy as np
 
-# Safe Imports for MoviePy (Supports both v1.x and v2.x)
+# Safe Imports for MoviePy
 try:
     from moviepy.editor import VideoFileClip, concatenate_videoclips
     import moviepy.video.fx.all as vfx
@@ -22,11 +22,9 @@ st.set_page_config(
     layout="centered"
 )
 
-# Encryption Helper Function (SHA-256)
 def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
-# Admin Credentials (Encrypted)
 ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 
@@ -34,7 +32,7 @@ USER_PASSCODE = "123456"
 UPI_ID = "cinepoliis@ibl"
 DB_FILE = "database.json"
 
-# Permanent Database Setup
+# Permanent Database Setup - Saves coins individually per user
 def load_db():
     if not os.path.exists(DB_FILE):
         default_db = {"users": {}, "pending_requests": [], "support_tickets": []}
@@ -44,8 +42,12 @@ def load_db():
     try:
         with open(DB_FILE, "r") as f:
             data = json.load(f)
+            if "users" not in data:
+                data["users"] = {}
             if "support_tickets" not in data:
                 data["support_tickets"] = []
+            if "pending_requests" not in data:
+                data["pending_requests"] = []
             return data
     except:
         return {"users": {}, "pending_requests": [], "support_tickets": []}
@@ -115,7 +117,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Session States
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -144,7 +145,6 @@ def manual_zoom(clip, zoom_factor):
     return clip.fl_image(zoom_frame)
 
 def apply_custom_effects(clip, edit_num):
-    # Visual Effects
     if edit_num in [2, 8]:
         clip = manual_zoom(clip, 1.10)
     elif edit_num == 3:
@@ -168,7 +168,6 @@ def apply_custom_effects(clip, edit_num):
         if hasattr(clip, 'speedx'):
             clip = clip.speedx(1.25)
 
-    # Audio Delay Sync Pattern Logic
     delay_factors = {
         1: 1.000, 2: 0.973, 3: 0.946, 4: 0.919, 5: 0.892, 6: 0.865, 
         7: 1.000, 8: 0.973, 9: 0.946, 10: 0.919, 11: 0.892, 12: 0.865,
@@ -207,11 +206,11 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. DEVICE LOGIN
+# 3. LOGIN & ACCOUNT REGISTRATION
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
-    st.info(f"💡 Default User Passcode: **{USER_PASSCODE}**")
+    st.info(f"💡 Default Passcode: **{USER_PASSCODE}**")
     
     with st.form("login_form"):
         email = st.text_input("Email Address", placeholder="user@example.com")
@@ -229,6 +228,7 @@ if not st.session_state.logged_in:
                 time.sleep(1)
                 st.rerun()
             elif clean_email and passcode == USER_PASSCODE:
+                # Assign initial 20 free coins ONLY IF NEW USER, else keep saved coins
                 if clean_email not in db["users"]:
                     db["users"][clean_email] = 20
                     save_db(db)
@@ -251,6 +251,13 @@ if not st.session_state.logged_in:
 # -----------------------------------------------------------------------------
 else:
     current_user = st.session_state.user_email
+    
+    # Reload freshest user data from database
+    db = load_db()
+    if current_user not in db["users"]:
+        db["users"][current_user] = 20
+        save_db(db)
+        
     user_coins = db["users"].get(current_user, 20)
 
     metric_col1, metric_col2, metric_col3 = st.columns(3)
@@ -267,13 +274,13 @@ else:
 
     with tab1:
         st.header("📤 15-Edit Sequence Video Processor")
-        st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
+        st.caption("Standard Cost: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
         
         uploaded_file = st.file_uploader("Choose video file", type=["mp4", "mov", "mkv", "avi"])
 
         if uploaded_file is not None:
             file_size_mb = uploaded_file.size / (1024 * 1024)
-            required_coins = 5 if file_size_mb < 50 else 10
+            base_coins = 5 if file_size_mb < 50 else 10
             
             input_path = "temp_input.mp4"
             output_path = "output_edited.mp4"
@@ -282,13 +289,41 @@ else:
             with open(input_path, "wb") as f:
                 f.write(bytes_data)
 
-            st.info(f"📁 **File Size:** {file_size_mb:.2f} MB | **Processing Cost:** 🪙 {required_coins} Coins")
             st.video(uploaded_file)
             st.divider()
 
-            if st.button(f"🚀 Apply 15-Edit Dynamic Sequence (Deduct 🪙 {required_coins} Coins)", type="primary"):
-                if user_coins >= required_coins:
-                    db["users"][current_user] -= required_coins
+            st.subheader("⚙️ Select Target Output Quality")
+            
+            quality_option = st.radio(
+                "Choose Export Quality:",
+                options=["720p (Free)", "1080p Full HD (3 Coins)", "2K Ultra HD (5 Coins)", "4K Ultra HD (10 Coins)"],
+                index=0
+            )
+
+            resolution_costs = {
+                "720p (Free)": (720, 0, "1500k"),
+                "1080p Full HD (3 Coins)": (1080, 3, "3000k"),
+                "2K Ultra HD (5 Coins)": (1440, 5, "6000k"),
+                "4K Ultra HD (10 Coins)": (2160, 10, "12000k")
+            }
+
+            target_height, quality_coins, bitrate = resolution_costs[quality_option]
+            total_required_coins = base_coins + quality_coins
+
+            st.info(
+                f"📁 **File Size Cost:** 🪙 {base_coins} Coins\n\n"
+                f"✨ **Quality Add-on:** 🪙 {quality_coins} Coins\n\n"
+                f"🪙 **Total Deductible Coins:** **{total_required_coins} Coins**"
+            )
+
+            if st.button(f"🚀 Process Video ({total_required_coins} Coins)", type="primary"):
+                # Always fetch fresh coins from database
+                db = load_db()
+                user_coins = db["users"].get(current_user, 0)
+
+                if user_coins >= total_required_coins:
+                    # DEDUCT COINS IMMEDIATELY & SAVE PERMANENTLY
+                    db["users"][current_user] -= total_required_coins
                     save_db(db)
                     
                     process_bar = st.progress(0, text="⚙️ AI Editing Engine Initializing...")
@@ -297,6 +332,7 @@ else:
                     try:
                         video = VideoFileClip(input_path)
                         actual_vid_duration = video.duration
+                        orig_w, orig_h = video.size
                         
                         clips = []
                         total_expected_cuts = 15
@@ -310,10 +346,7 @@ else:
                             edited_subclip = apply_custom_effects(subclip, edit_idx)
                             clips.append(edited_subclip)
 
-                            # Calculating 1% to 100% Percentage
                             prog_percentage = int((edit_idx / total_expected_cuts) * 85)
-                            
-                            # Increasing dots logic (. -> .. -> ...)
                             dots = "." * (((edit_idx - 1) % 3) + 1)
                             
                             process_bar.progress(
@@ -321,11 +354,26 @@ else:
                                 text=f"⚙️ AI Editing Engine Processing Step {edit_idx}/15{dots} ({prog_percentage}%)"
                             )
 
-                        status_box.info("⚙️ Finalizing Audio-Video Tracks & Rendering Output...")
+                        status_box.info("⚙️ Finalizing Aspect Ratio & Resolution Upscaling...")
                         process_bar.progress(92, text="⚙️ AI Editing Engine Finalizing Video... (92%)")
                         
                         final_clip = concatenate_videoclips(clips)
-                        final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
+
+                        # Preserving Original Aspect Ratio/Frame
+                        if orig_h != target_height:
+                            aspect_ratio = orig_w / float(orig_h)
+                            new_w = int(target_height * aspect_ratio)
+                            if new_w % 2 != 0:
+                                new_w += 1
+                            final_clip = final_clip.resize(newsize=(new_w, target_height))
+
+                        final_clip.write_videofile(
+                            output_path, 
+                            codec="libx264", 
+                            audio_codec="aac", 
+                            bitrate=bitrate, 
+                            logger=None
+                        )
                         
                         process_bar.progress(100, text="✅ AI Editing Engine Processing Complete! (100%)")
                         status_box.empty()
@@ -333,20 +381,27 @@ else:
 
                         st.divider()
                         st.subheader("📥 Download Ready Video")
+                        st.video(output_path)
                         
                         with open(output_path, "rb") as file:
                             st.download_button(
-                                label="📥 Download Processed Video",
+                                label=f"📥 Download Processed Video ({quality_option.split()[0]})",
                                 data=file,
-                                file_name="sequence_edited_video.mp4",
+                                file_name=f"processed_{quality_option.split()[0]}_video.mp4",
                                 mime="video/mp4",
                                 type="primary"
                             )
+                        
+                        time.sleep(1)
+                        st.rerun() # Refresh page to update coins metric immediately
 
                     except Exception as e:
-                        st.error(f"❌ Video Processing Error: {str(e)}")
+                        # Refund coins if processing fails
+                        db["users"][current_user] += total_required_coins
+                        save_db(db)
+                        st.error(f"❌ Video Processing Error: {str(e)}. Coins have been refunded.")
                 else:
-                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {user_coins} Coins.")
 
     # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
