@@ -1,3 +1,5 @@
 streamlit
-supabase
-httpx==0.27.2
+moviepy<2.0.0
+numpy
+imageio
+imageio-ffmpeg
