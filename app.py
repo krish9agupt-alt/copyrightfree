@@ -2,7 +2,7 @@ import streamlit as st
 import time
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIGURATION & DARK PREMIUM STYLING
+# 1. PAGE CONFIG & CUSTOM THEME (GOLDEN, BLACK, WHITE, PINK)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="No Copyright Video Studio - Premium", 
@@ -10,81 +10,94 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS for Premium Black/Dark Theme
+# Custom Styling (Black, Gold, Pink, White)
 st.markdown("""
     <style>
-    /* Dark Theme Background */
     .stApp {
-        background-color: #0E1117;
+        background-color: #0B0C10;
         color: #FFFFFF;
     }
-    /* Hide Streamlit default sidebar completely */
     [data-testid="stSidebar"] {
         display: none;
     }
     .main-header {
         text-align: center;
-        font-weight: 800;
-        color: #00E676;
-        margin-bottom: 0.5rem;
+        font-weight: 900;
+        background: linear-gradient(45deg, #FFD700, #FF69B4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.2rem;
     }
     .sub-header {
         text-align: center;
-        color: #888888;
+        color: #E0E0E0;
         font-size: 0.95rem;
         margin-bottom: 2rem;
     }
-    /* Premium Cards */
+    /* Plan Cards Styling */
     .plan-card {
-        background: #1A1D24;
-        border: 1px solid #2B2F3A;
-        border-radius: 12px;
-        padding: 1.5rem;
+        background: #121212;
+        border: 2px solid #FFD700;
+        border-radius: 15px;
+        padding: 1.2rem;
         text-align: center;
         margin-bottom: 1rem;
+        box-shadow: 0px 4px 15px rgba(255, 215, 0, 0.15);
     }
+    .plan-card h3 {
+        color: #FF69B4 !important;
+        margin-bottom: 0.5rem;
+    }
+    .plan-card h2 {
+        color: #FFD700 !important;
+    }
+    .plan-card p {
+        color: #FFFFFF !important;
+        font-weight: bold;
+    }
+    /* Buttons */
     .stButton>button {
         width: 100%;
-        border-radius: 8px;
+        border-radius: 10px;
         height: 3em;
-        background-color: #00E676;
+        background: linear-gradient(90deg, #FFD700, #FF69B4);
         color: #000000;
         font-weight: bold;
         border: none;
     }
     .stButton>button:hover {
-        background-color: #00B359;
+        opacity: 0.9;
         color: #FFFFFF;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Session State Initializations
+# Session State
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
-if "balance" not in st.session_state:
-    st.session_state.balance = 10  # ₹10 Initial Balance
+if "coins" not in st.session_state:
+    st.session_state.coins = 20  # Free Signup Coins
 
 if "selected_plan" not in st.session_state:
     st.session_state.selected_plan = None
 
 # -----------------------------------------------------------------------------
-# 2. HEADER & NAVIGATION
+# 2. HEADER
 # -----------------------------------------------------------------------------
 st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-header'>AI-Powered Video Protection & Editing Dashboard</p>", unsafe_allow_html=True)
+st.markdown("<p class='sub-header'>AI Video Protection & Editing Portal</p>", unsafe_allow_html=True)
 
 top_col1, top_col2 = st.columns([3, 1])
 
 with top_col1:
     if st.session_state.logged_in:
-        st.success(f"Logged in as: **{st.session_state.user_email}**")
+        st.success(f"User: **{st.session_state.user_email}**")
     else:
-        st.info("Welcome! Sign in to access your studio.")
+        st.info("Please login to process videos.")
 
 with top_col2:
     if st.session_state.logged_in:
@@ -96,21 +109,21 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. VIEW 1: DEVICE LOGIN
+# 3. DEVICE LOGIN FORM
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
-    st.subheader("🔑 Premium Access Login")
+    st.subheader("🔑 Access Dashboard")
     
     with st.form("login_form"):
         email = st.text_input("Email Address", placeholder="user@example.com")
         passcode = st.text_input("Access Passcode", type="password", placeholder="Enter passcode (123456)")
-        submit_button = st.form_submit_button("🚀 Enter Studio Dashboard", type="primary")
+        submit_button = st.form_submit_button("🚀 Enter Studio", type="primary")
 
         if submit_button:
             if email and passcode == "123456":
                 st.session_state.logged_in = True
                 st.session_state.user_email = email
-                st.success("Access Granted! Opening Dashboard...")
+                st.success("Access Granted!")
                 time.sleep(1)
                 st.rerun()
             elif not email:
@@ -119,24 +132,23 @@ if not st.session_state.logged_in:
                 st.error("Invalid passcode! Enter '123456'.")
 
 # -----------------------------------------------------------------------------
-# 4. VIEW 2: PREMIUM DASHBOARD & TOOLS
+# 4. DASHBOARD & TOOLS
 # -----------------------------------------------------------------------------
 else:
-    # Key Stats Dashboard Cards
+    # Top Stats
     metric_col1, metric_col2, metric_col3 = st.columns(3)
-    metric_col1.metric("Available Balance", f"₹ {st.session_state.balance}")
+    metric_col1.metric("Available Coins", f"🪙 {st.session_state.coins}")
     metric_col2.metric("Account Status", "PRO Active")
     metric_col3.metric("Upload Limit", "200 MB")
 
     st.divider()
 
-    # Create Tabs for Video Processing and Subscription Recharge
-    tab1, tab2 = st.tabs(["📹 Video Studio", "💳 Recharge Balance / Subscription"])
+    tab1, tab2 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins"])
 
-    # --- TAB 1: VIDEO PROCESSING ---
+    # --- TAB 1: VIDEO STUDIO ---
     with tab1:
         st.header("📤 Upload & Process Video")
-        st.caption("Supports MP4, MOV, AVI up to 200 MB")
+        st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
         
         uploaded_file = st.file_uploader(
             "Choose a video file", 
@@ -144,6 +156,14 @@ else:
         )
 
         if uploaded_file is not None:
+            # Calculate File Size in MB
+            file_size_mb = uploaded_file.size / (1024 * 1024)
+            
+            # Determine Required Coins
+            required_coins = 5 if file_size_mb < 50 else 10
+            
+            st.info(f"📁 **File Size:** {file_size_mb:.2f} MB | **Processing Cost:** 🪙 {required_coins} Coins")
+            
             st.subheader("📹 Video Preview")
             st.video(uploaded_file)
             
@@ -160,9 +180,9 @@ else:
                 speed = st.slider("Speed Adjustment", 0.5, 2.0, 1.0)
 
             st.write("")
-            if st.button("🚀 Start Processing (Cost: ₹2)", type="primary"):
-                if st.session_state.balance >= 2:
-                    st.session_state.balance -= 2
+            if st.button(f"🚀 Start Processing (Deduct 🪙 {required_coins} Coins)", type="primary"):
+                if st.session_state.coins >= required_coins:
+                    st.session_state.coins -= required_coins
                     
                     progress_bar = st.progress(0)
                     status_text = st.empty()
@@ -170,7 +190,7 @@ else:
                     for i in range(1, 101):
                         time.sleep(0.02)
                         progress_bar.progress(i)
-                        status_text.text(f"Applying protection filters... {i}%")
+                        status_text.text(f"Processing filters... {i}%")
                     
                     status_text.empty()
                     st.balloons()
@@ -183,53 +203,59 @@ else:
                         mime="video/mp4"
                     )
                 else:
-                    st.error("❌ Insufficient Balance! Please go to the 'Recharge Balance' tab to top up.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins for this file. Please buy coins.")
 
-    # --- TAB 2: SUBSCRIPTION & SCAN & PAY ---
+    # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
-        st.header("⚡ Choose a Recharge Plan")
-        st.write("Select a plan and scan the QR code to top up your balance.")
+        st.header("⚡ Buy Coins Instant Top-Up")
+        st.write("Select a package and scan QR code to recharge your coins balance.")
 
-        plan_col1, plan_col2, plan_col3 = st.columns(3)
+        plan_col1, plan_col2 = st.columns(2)
+        plan_col3, plan_col4 = st.columns(2)
 
         with plan_col1:
-            st.markdown("<div class='plan-card'><h3>Basic</h3><h2>₹199</h2><p>Balance: ₹199</p></div>", unsafe_allow_html=True)
-            if st.button("Select Basic", key="p1"):
-                st.session_state.selected_plan = ("Basic", 199, 199)
+            st.markdown("<div class='plan-card'><h3>Starter</h3><h2>₹49</h2><p>🪙 50 Coins</p></div>", unsafe_allow_html=True)
+            if st.button("Buy ₹49 Plan", key="p1"):
+                st.session_state.selected_plan = ("Starter", 49, 50)
 
         with plan_col2:
-            st.markdown("<div class='plan-card'><h3>Pro</h3><h2>₹499</h2><p>Balance: ₹500</p></div>", unsafe_allow_html=True)
-            if st.button("Select Pro", key="p2"):
-                st.session_state.selected_plan = ("Pro", 499, 500)
+            st.markdown("<div class='plan-card'><h3>Popular</h3><h2>₹99</h2><p>🪙 110 Coins</p></div>", unsafe_allow_html=True)
+            if st.button("Buy ₹99 Plan", key="p2"):
+                st.session_state.selected_plan = ("Popular", 99, 110)
 
         with plan_col3:
-            st.markdown("<div class='plan-card'><h3>Unlimited</h3><h2>₹999</h2><p>Balance: ₹1100</p></div>", unsafe_allow_html=True)
-            if st.button("Select Unlimited", key="p3"):
-                st.session_state.selected_plan = ("Unlimited", 999, 1100)
+            st.markdown("<div class='plan-card'><h3>Value</h3><h2>₹199</h2><p>🪙 221 Coins</p></div>", unsafe_allow_html=True)
+            if st.button("Buy ₹199 Plan", key="p3"):
+                st.session_state.selected_plan = ("Value", 199, 221)
+
+        with plan_col4:
+            st.markdown("<div class='plan-card'><h3>Mega Pro</h3><h2>₹399</h2><p>🪙 500 Coins</p></div>", unsafe_allow_html=True)
+            if st.button("Buy ₹399 Plan", key="p4"):
+                st.session_state.selected_plan = ("Mega Pro", 399, 500)
 
         st.divider()
 
-        # Payment QR Code & Verification Section
+        # Payment QR Code Section
         if st.session_state.selected_plan:
-            plan_name, amount, balance_to_add = st.session_state.selected_plan
-            st.subheader(f"📲 Complete Payment for {plan_name} Plan (₹{amount})")
+            plan_name, amount, coins_to_add = st.session_state.selected_plan
+            st.subheader(f"📲 Scan & Pay ₹{amount} for {coins_to_add} Coins")
             
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
                 st.image(
                     f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupiid@upi&pn=Studio&am={amount}",
-                    caption="Scan with GPay, PhonePe, or Paytm"
+                    caption="Scan with GPay / PhonePe / Paytm"
                 )
 
             with pay_col2:
-                utr_number = st.text_input("Enter 12-Digit Transaction / UTR Number")
-                if st.button("VERIFY & ADD BALANCE", type="primary"):
+                utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.")
+                if st.button("VERIFY & ADD COINS", type="primary"):
                     if len(utr_number) >= 8:
-                        st.session_state.balance += balance_to_add
-                        st.success(f"🎉 Payment Verified! ₹{balance_to_add} added to your account.")
+                        st.session_state.coins += coins_to_add
+                        st.success(f"🎉 Verified! 🪙 {coins_to_add} Coins added successfully!")
                         st.session_state.selected_plan = None
                         time.sleep(1.5)
                         st.rerun()
                     else:
-                        st.error("Please enter a valid Transaction/UTR Number.")
+                        st.error("Please enter a valid Transaction / UTR Number.")
