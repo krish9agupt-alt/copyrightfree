@@ -4,8 +4,14 @@ import json
 import os
 import hashlib
 import numpy as np
-from moviepy.editor import VideoFileClip, concatenate_videoclips
-import moviepy.video.fx.all as vfx
+
+# Safe Imports for MoviePy (Supports both v1.x and v2.x)
+try:
+    from moviepy.editor import VideoFileClip, concatenate_videoclips
+    import moviepy.video.fx.all as vfx
+except ImportError:
+    from moviepy import VideoFileClip, concatenate_videoclips
+    import moviepy.video.fx as vfx
 
 # -----------------------------------------------------------------------------
 # 1. PAGE CONFIG & CUSTOM THEME
@@ -21,7 +27,6 @@ def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
 # Admin Credentials (Encrypted)
-# Email: krish9agupt@gmail.com | Passcode: Krish9A
 ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 
@@ -143,23 +148,25 @@ def apply_custom_effects(clip, edit_num):
     if edit_num in [2, 8]:
         clip = manual_zoom(clip, 1.10)
     elif edit_num == 3:
-        clip = clip.speedx(1.3)
+        clip = clip.speedx(1.3) if hasattr(clip, 'speedx') else clip
     elif edit_num in [4, 13]:
-        clip = clip.fx(vfx.colorx, 0.85)
+        clip = clip.fx(vfx.colorx, 0.85) if hasattr(vfx, 'colorx') else clip
     elif edit_num in [5, 11, 15]:
-        clip = clip.fx(vfx.colorx, 1.30)
+        clip = clip.fx(vfx.colorx, 1.30) if hasattr(vfx, 'colorx') else clip
     elif edit_num == 6:
         clip = clip.fl_image(lambda img: img[:, ::-1])
     elif edit_num == 7:
-        clip = clip.fx(vfx.colorx, 1.15)
+        clip = clip.fx(vfx.colorx, 1.15) if hasattr(vfx, 'colorx') else clip
     elif edit_num == 9:
-        clip = clip.speedx(1.2)
+        clip = clip.speedx(1.2) if hasattr(clip, 'speedx') else clip
     elif edit_num == 10:
         clip = manual_zoom(clip, 1.05)
     elif edit_num == 12:
         clip = manual_zoom(clip, 1.15)
     elif edit_num == 14:
-        clip = clip.fl_image(lambda img: img[:, ::-1]).speedx(1.25)
+        clip = clip.fl_image(lambda img: img[:, ::-1])
+        if hasattr(clip, 'speedx'):
+            clip = clip.speedx(1.25)
 
     # Audio Delay Sync Pattern Logic
     delay_factors = {
@@ -214,7 +221,6 @@ if not st.session_state.logged_in:
         if submit_button:
             clean_email = email.lower().strip()
             
-            # Check Admin Credentials
             if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
@@ -222,10 +228,9 @@ if not st.session_state.logged_in:
                 st.success("Welcome Admin! Accessing Dashboard...")
                 time.sleep(1)
                 st.rerun()
-            # Check Normal User Login
             elif clean_email and passcode == USER_PASSCODE:
                 if clean_email not in db["users"]:
-                    db["users"][clean_email] = 20  # 20 Free Coins
+                    db["users"][clean_email] = 20
                     save_db(db)
                 
                 st.session_state.logged_in = True
@@ -260,7 +265,6 @@ else:
     else:
         tab1, tab2, tab3 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
 
-    # --- TAB 1: 15-EDIT AUTOMATED LOOPING ENGINE WITH MOVIEPY REAL RENDERING ---
     with tab1:
         st.header("📤 Auto-Looping 15-Edit Sequence Processor")
         st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
@@ -271,8 +275,7 @@ else:
             file_size_mb = uploaded_file.size / (1024 * 1024)
             required_coins = 5 if file_size_mb < 50 else 10
             
-            # File Uploading Progress Indicator
-            upload_bar = st.progress(0, text="📤 वीडियो फाइल सर्वर/लोकल में अपलोड हो रही है...")
+            upload_bar = st.progress(0, text="📤 वीडियो फाइल अपलोड हो रही है...")
             input_path = "temp_input.mp4"
             output_path = "output_edited.mp4"
             
@@ -280,7 +283,7 @@ else:
             with open(input_path, "wb") as f:
                 f.write(bytes_data)
             
-            upload_bar.progress(100, text="✅ वीडियो फाइल अपलोड पूर्ण हुई!")
+            upload_bar.progress(100, text="✅ अपलोड पूर्ण हुआ!")
 
             st.info(f"📁 **File Size:** {file_size_mb:.2f} MB | **Processing Cost:** 🪙 {required_coins} Coins")
             st.video(uploaded_file)
@@ -295,32 +298,12 @@ else:
             
             st.success(f"🔁 Video will undergo **{loops_required} Sequence Loop(s)** across **{total_edits} total edits** ({total_duration_sec} Seconds total processing).")
 
-            with st.expander("👁️ View 15-Edit Sequence Pattern (Per 30-Sec Loop)"):
-                st.markdown("""
-                * **0:00 – 0:02 (Edit 1):** Normal Speed (0.5x) + ~54 ms Audio Delay
-                * **0:02 – 0:04 (Edit 2):** Push Zoom In (110%) + ~108 ms Audio Delay
-                * **0:04 – 0:06 (Edit 3):** Speed Ramp (Fast to Normal) + ~162 ms Audio Delay
-                * **0:06 – 0:08 (Edit 4):** Cool Filter Shift + ~216 ms Audio Delay
-                * **0:08 – 0:10 (Edit 5):** Horizontal Shake / Flash + ~270 ms Audio Delay
-                * **0:10 – 0:12 (Edit 6):** Fast Cut + 🔄 Mirror Flip + ~324 ms Audio Delay
-                * **0:12 – 0:14 (Edit 7):** Warm Filter Shift + ~54 ms Audio Delay (Restart)
-                * **0:14 – 0:16 (Edit 8):** Push Zoom In (110%) + ~108 ms Audio Delay
-                * **0:16 – 0:18 (Edit 9):** Speed Ramp (Fast to Normal) + ~162 ms Audio Delay
-                * **0:18 – 0:20 (Edit 10):** Fast Cut / Re-frame + ~216 ms Audio Delay
-                * **0:20 – 0:22 (Edit 11):** Horizontal Shake / Flash + ~270 ms Audio Delay
-                * **0:22 – 0:24 (Edit 12):** Push Zoom In (115%) + ~324 ms Audio Delay
-                * **0:24 – 0:26 (Edit 13):** Cool Filter Shift + ~54 ms Audio Delay (Restart)
-                * **0:26 – 0:28 (Edit 14):** Speed Ramp + ~108 ms Audio Delay
-                * **0:28 – 0:30 (Edit 15):** Horizontal Shake + Soft Outro + ~162 ms Audio Delay
-                """)
-
             st.write("")
             if st.button(f"🚀 Apply 15-Edit Dynamic Loops (Deduct 🪙 {required_coins} Coins)", type="primary"):
                 if user_coins >= required_coins:
                     db["users"][current_user] -= required_coins
                     save_db(db)
                     
-                    # Processing Bar Feature
                     process_bar = st.progress(0, text="🎬 MoviePy 15-Sequence FX और Audio Delay अप्लाई हो रहा है...")
                     status_box = st.empty()
 
@@ -341,7 +324,6 @@ else:
                                 start = (edit_idx - 1) * 2.0
                                 end = edit_idx * 2.0
                                 
-                                # Loop input clip if total_duration_sec > video.duration
                                 seg_start = (current_time + start) % actual_vid_duration
                                 seg_end = seg_start + (end - start)
                                 
@@ -359,7 +341,7 @@ else:
 
                             current_time += pattern_duration
 
-                        status_box.info("⚙️ फाइनल वीडियो और ऑडियो ट्रैक को रेंडर/मर्ज किया जा रहा है...")
+                        status_box.info("⚙️ फाइनल वीडियो और ऑडियो ट्रैक को रेंडर किया जा रहा है...")
                         final_clip = concatenate_videoclips(clips)
                         final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
                         
@@ -367,10 +349,9 @@ else:
                         status_box.empty()
                         st.balloons()
 
-                        # Downloading Feature Bar
                         st.divider()
                         st.subheader("📥 तैयार वीडियो डाउनलोड करें")
-                        download_bar = st.progress(0, text="💾 फाइल डाउनलोड के लिए तैयार की जा रही है...")
+                        download_bar = st.progress(0, text="💾 फाइल तैयार की जा रही है...")
                         
                         with open(output_path, "rb") as file:
                             download_bar.progress(100, text="✅ फाइल डाउनलोड के लिए उपलब्ध है!")
@@ -383,9 +364,9 @@ else:
                             )
 
                     except Exception as e:
-                        st.error(f"❌ वीडियो प्रोसेसिंग के दौरान एरर आया: {str(e)}")
+                        st.error(f"❌ वीडियो प्रोसेसिंग एरर: {str(e)}")
                 else:
-                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins. Please request coins in Buy tab.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins.")
 
     # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
@@ -446,8 +427,6 @@ else:
     # --- TAB 3: HELP & SUPPORT ---
     with tab3:
         st.header("💬 Help & Support")
-        st.caption("Need help with coins, payments, or processing? Submit a message below.")
-        
         with st.form("support_form"):
             user_msg = st.text_area("Your Message / Query", placeholder="Describe your problem or question here...")
             sub_ticket = st.form_submit_button("📩 Send Message")
@@ -479,7 +458,6 @@ else:
         with tab4:
             st.header("⚙️ Admin Dashboard & Control")
             
-            # --- Payment Approval Section ---
             st.subheader("💳 Pending Payment Approvals")
             pending_list = db.get("pending_requests", [])
 
@@ -508,7 +486,6 @@ else:
 
             st.divider()
 
-            # --- Support Tickets Management Section ---
             st.subheader("💬 User Support Requests")
             tickets = db.get("support_tickets", [])
             
