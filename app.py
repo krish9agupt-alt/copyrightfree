@@ -2,7 +2,7 @@ import streamlit as st
 import time
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & CUSTOM THEME (GOLDEN, BLACK, WHITE, PINK)
+# 1. PAGE CONFIG & CUSTOM THEME
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="No Copyright Video Studio - Premium", 
@@ -10,7 +10,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom Styling (Black, Gold, Pink, White)
 st.markdown("""
     <style>
     .stApp {
@@ -34,7 +33,6 @@ st.markdown("""
         font-size: 0.95rem;
         margin-bottom: 2rem;
     }
-    /* Plan Cards Styling */
     .plan-card {
         background: #121212;
         border: 2px solid #FFD700;
@@ -55,7 +53,6 @@ st.markdown("""
         color: #FFFFFF !important;
         font-weight: bold;
     }
-    /* Buttons */
     .stButton>button {
         width: 100%;
         border-radius: 10px;
@@ -72,7 +69,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Session State
+# Session States
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -80,10 +77,13 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
 if "coins" not in st.session_state:
-    st.session_state.coins = 20  # Free Signup Coins
+    st.session_state.coins = 20
 
 if "selected_plan" not in st.session_state:
     st.session_state.selected_plan = None
+
+if "pending_requests" not in st.session_state:
+    st.session_state.pending_requests = []
 
 # -----------------------------------------------------------------------------
 # 2. HEADER
@@ -109,7 +109,7 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. DEVICE LOGIN FORM
+# 3. DEVICE LOGIN
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
@@ -135,7 +135,6 @@ if not st.session_state.logged_in:
 # 4. DASHBOARD & TOOLS
 # -----------------------------------------------------------------------------
 else:
-    # Top Stats
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     metric_col1.metric("Available Coins", f"🪙 {st.session_state.coins}")
     metric_col2.metric("Account Status", "PRO Active")
@@ -143,28 +142,20 @@ else:
 
     st.divider()
 
-    tab1, tab2 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins"])
+    tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "⚙️ Admin Approval"])
 
     # --- TAB 1: VIDEO STUDIO ---
     with tab1:
         st.header("📤 Upload & Process Video")
         st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
         
-        uploaded_file = st.file_uploader(
-            "Choose a video file", 
-            type=["mp4", "mov", "avi"]
-        )
+        uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
         if uploaded_file is not None:
-            # Calculate File Size in MB
             file_size_mb = uploaded_file.size / (1024 * 1024)
-            
-            # Determine Required Coins
             required_coins = 5 if file_size_mb < 50 else 10
             
             st.info(f"📁 **File Size:** {file_size_mb:.2f} MB | **Processing Cost:** 🪙 {required_coins} Coins")
-            
-            st.subheader("📹 Video Preview")
             st.video(uploaded_file)
             
             st.divider()
@@ -183,7 +174,6 @@ else:
             if st.button(f"🚀 Start Processing (Deduct 🪙 {required_coins} Coins)", type="primary"):
                 if st.session_state.coins >= required_coins:
                     st.session_state.coins -= required_coins
-                    
                     progress_bar = st.progress(0)
                     status_text = st.empty()
 
@@ -203,12 +193,12 @@ else:
                         mime="video/mp4"
                     )
                 else:
-                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins for this file. Please buy coins.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins. Please request coins in Buy tab.")
 
     # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
-        st.header("⚡ Buy Coins Instant Top-Up")
-        st.write("Select a package and scan QR code to recharge your coins balance.")
+        st.header("⚡ Request Coins Recharge")
+        st.write("Select a package, scan QR code, and submit UTR for manual admin verification.")
 
         plan_col1, plan_col2 = st.columns(2)
         plan_col3, plan_col4 = st.columns(2)
@@ -235,27 +225,52 @@ else:
 
         st.divider()
 
-        # Payment QR Code Section
         if st.session_state.selected_plan:
             plan_name, amount, coins_to_add = st.session_state.selected_plan
-            st.subheader(f"📲 Scan & Pay ₹{amount} for {coins_to_add} Coins")
+            st.subheader(f"📲 Scan QR & Submit UTR for ₹{amount} ({coins_to_add} Coins)")
             
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
-                st.image(
-                    f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupiid@upi&pn=Studio&am={amount}",
-                    caption="Scan with GPay / PhonePe / Paytm"
-                )
+                # Displays your PhonePe QR code from GitHub
+                st.image("https://raw.githubusercontent.com/Anand993188/noncopyright/main/image_8.png", caption="PhonePe QR Code", width=200)
 
             with pay_col2:
-                utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.")
-                if st.button("VERIFY & ADD COINS", type="primary"):
-                    if len(utr_number) >= 8:
-                        st.session_state.coins += coins_to_add
-                        st.success(f"🎉 Verified! 🪙 {coins_to_add} Coins added successfully!")
+                utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.", max_chars=12)
+                if st.button("SUBMIT FOR VERIFICATION", type="primary"):
+                    if len(utr_number) == 12 and utr_number.isdigit():
+                        st.session_state.pending_requests.append({
+                            "user": st.session_state.user_email,
+                            "utr": utr_number,
+                            "amount": amount,
+                            "coins": coins_to_add
+                        })
+                        st.info("⏳ UTR submitted! Coins will be added after Admin verifies payment in Bank Statement.")
                         st.session_state.selected_plan = None
-                        time.sleep(1.5)
-                        st.rerun()
                     else:
-                        st.error("Please enter a valid Transaction / UTR Number.")
+                        st.error("Please enter a valid 12-digit numeric UTR Number.")
+
+    # --- TAB 3: ADMIN APPROVAL PANEL ---
+    with tab3:
+        st.header("⚙️ Admin Payment Verification Panel")
+        st.caption("Cross-check UTR numbers with your PhonePe / Bank app before approving.")
+
+        if len(st.session_state.pending_requests) == 0:
+            st.write("No pending payment verification requests.")
+        else:
+            for idx, req in enumerate(st.session_state.pending_requests):
+                st.warning(f"**User:** {req['user']} | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}` | **Coins:** 🪙 {req['coins']}")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button(f"✅ Approve & Add {req['coins']} Coins", key=f"app_{idx}"):
+                        st.session_state.coins += req["coins"]
+                        st.session_state.pending_requests.pop(idx)
+                        st.success(f"Payment Verified! Added {req['coins']} coins to account.")
+                        time.sleep(1)
+                        st.rerun()
+                with col_b:
+                    if st.button("❌ Reject Payment", key=f"rej_{idx}"):
+                        st.session_state.pending_requests.pop(idx)
+                        st.error("Payment rejected.")
+                        time.sleep(1)
+                        st.rerun()
