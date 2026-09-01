@@ -266,7 +266,7 @@ else:
         tab1, tab2, tab3 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
 
     with tab1:
-        st.header("📤 Auto-Looping 15-Edit Sequence Processor")
+        st.header("📤 15-Edit Sequence Video Processor")
         st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
         
         uploaded_file = st.file_uploader("Choose video file", type=["mp4", "mov", "mkv", "avi"])
@@ -275,96 +275,76 @@ else:
             file_size_mb = uploaded_file.size / (1024 * 1024)
             required_coins = 5 if file_size_mb < 50 else 10
             
-            upload_bar = st.progress(0, text="📤 वीडियो फाइल अपलोड हो रही है...")
             input_path = "temp_input.mp4"
             output_path = "output_edited.mp4"
             
             bytes_data = uploaded_file.read()
             with open(input_path, "wb") as f:
                 f.write(bytes_data)
-            
-            upload_bar.progress(100, text="✅ अपलोड पूर्ण हुआ!")
 
             st.info(f"📁 **File Size:** {file_size_mb:.2f} MB | **Processing Cost:** 🪙 {required_coins} Coins")
             st.video(uploaded_file)
-            
             st.divider()
-            st.subheader("⏱️ Video Length & Looping Parameters")
-            
-            total_duration_sec = st.number_input("Total Video Length (in seconds)", min_value=10, max_value=3600, value=60, step=10)
-            
-            loops_required = (total_duration_sec // 30) + (1 if total_duration_sec % 30 != 0 else 0)
-            total_edits = (loops_required * 15)
-            
-            st.success(f"🔁 Video will undergo **{loops_required} Sequence Loop(s)** across **{total_edits} total edits** ({total_duration_sec} Seconds total processing).")
 
-            st.write("")
-            if st.button(f"🚀 Apply 15-Edit Dynamic Loops (Deduct 🪙 {required_coins} Coins)", type="primary"):
+            if st.button(f"🚀 Apply 15-Edit Dynamic Sequence (Deduct 🪙 {required_coins} Coins)", type="primary"):
                 if user_coins >= required_coins:
                     db["users"][current_user] -= required_coins
                     save_db(db)
                     
-                    process_bar = st.progress(0, text="🎬 MoviePy 15-Sequence FX और Audio Delay अप्लाई हो रहा है...")
+                    process_bar = st.progress(0, text="⚙️ AI Editing Engine Initializing...")
                     status_box = st.empty()
 
                     try:
                         video = VideoFileClip(input_path)
                         actual_vid_duration = video.duration
-                        target_duration = float(total_duration_sec)
                         
-                        pattern_duration = 30.0
                         clips = []
-                        current_time = 0.0
+                        total_expected_cuts = 15
+                        cut_duration = actual_vid_duration / 15.0
 
-                        total_expected_cuts = total_edits
-                        completed_cuts = 0
+                        for edit_idx in range(1, 16):
+                            seg_start = (edit_idx - 1) * cut_duration
+                            seg_end = edit_idx * cut_duration
+                            
+                            subclip = video.subclip(seg_start, seg_end)
+                            edited_subclip = apply_custom_effects(subclip, edit_idx)
+                            clips.append(edited_subclip)
 
-                        while current_time < target_duration:
-                            for edit_idx in range(1, 16):
-                                start = (edit_idx - 1) * 2.0
-                                end = edit_idx * 2.0
-                                
-                                seg_start = (current_time + start) % actual_vid_duration
-                                seg_end = seg_start + (end - start)
-                                
-                                if seg_end > actual_vid_duration:
-                                    subclip = video.subclip(seg_start, actual_vid_duration)
-                                else:
-                                    subclip = video.subclip(seg_start, seg_end)
+                            # Calculating 1% to 100% Percentage
+                            prog_percentage = int((edit_idx / total_expected_cuts) * 85)
+                            
+                            # Increasing dots logic (. -> .. -> ...)
+                            dots = "." * (((edit_idx - 1) % 3) + 1)
+                            
+                            process_bar.progress(
+                                prog_percentage, 
+                                text=f"⚙️ AI Editing Engine Processing Step {edit_idx}/15{dots} ({prog_percentage}%)"
+                            )
 
-                                edited_subclip = apply_custom_effects(subclip, edit_idx)
-                                clips.append(edited_subclip)
-
-                                completed_cuts += 1
-                                prog_percentage = min(int((completed_cuts / total_expected_cuts) * 90), 90)
-                                process_bar.progress(prog_percentage, text=f"⚡ एडिट स्टेप {completed_cuts}/{total_expected_cuts} प्रोसेस हो रहा है...")
-
-                            current_time += pattern_duration
-
-                        status_box.info("⚙️ फाइनल वीडियो और ऑडियो ट्रैक को रेंडर किया जा रहा है...")
+                        status_box.info("⚙️ Finalizing Audio-Video Tracks & Rendering Output...")
+                        process_bar.progress(92, text="⚙️ AI Editing Engine Finalizing Video... (92%)")
+                        
                         final_clip = concatenate_videoclips(clips)
                         final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
                         
-                        process_bar.progress(100, text="✅ वीडियो एडिटिंग पूर्ण हुई!")
+                        process_bar.progress(100, text="✅ AI Editing Engine Processing Complete! (100%)")
                         status_box.empty()
                         st.balloons()
 
                         st.divider()
-                        st.subheader("📥 तैयार वीडियो डाउनलोड करें")
-                        download_bar = st.progress(0, text="💾 फाइल तैयार की जा रही है...")
+                        st.subheader("📥 Download Ready Video")
                         
                         with open(output_path, "rb") as file:
-                            download_bar.progress(100, text="✅ फाइल डाउनलोड के लिए उपलब्ध है!")
                             st.download_button(
-                                label=f"📥 Download Processed Video ({total_duration_sec}s)",
+                                label="📥 Download Processed Video",
                                 data=file,
-                                file_name=f"sequence_edited_{total_duration_sec}s.mp4",
+                                file_name="sequence_edited_video.mp4",
                                 mime="video/mp4",
                                 type="primary"
                             )
 
                     except Exception as e:
-                        st.error(f"❌ वीडियो प्रोसेसिंग एरर: {str(e)}")
+                        st.error(f"❌ Video Processing Error: {str(e)}")
                 else:
                     st.error(f"❌ Insufficient Coins! You need 🪙 {required_coins} Coins.")
 
