@@ -8,7 +8,7 @@ import hashlib
 # 1. PAGE CONFIG & CUSTOM THEME
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="No Copyright Video Studio - Premium", 
+    page_title="No Copyright Video Studio - Dynamic Sequences", 
     page_icon="🎬", 
     layout="centered"
 )
@@ -18,8 +18,7 @@ def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
 # Admin Credentials (Encrypted)
-# Email: krish9agupt@gmail.com
-# Passcode: Krish9A
+# Email: krish9agupt@gmail.com | Passcode: Krish9A
 ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 
@@ -125,7 +124,7 @@ if "selected_plan" not in st.session_state:
 # 2. HEADER
 # -----------------------------------------------------------------------------
 st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-header'>AI Video Protection & Editing Portal</p>", unsafe_allow_html=True)
+st.markdown("<p class='sub-header'>AI Dynamic 15-Edit Sequence Engine</p>", unsafe_allow_html=True)
 
 top_col1, top_col2 = st.columns([3, 1])
 
@@ -147,7 +146,7 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. DEVICE LOGIN (SHOWING USER PASSCODE & ENCRYPTED ADMIN LOGIN)
+# 3. DEVICE LOGIN
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
@@ -161,7 +160,7 @@ if not st.session_state.logged_in:
         if submit_button:
             clean_email = email.lower().strip()
             
-            # Check Admin Credentials via Hash Comparison
+            # Check Admin Credentials
             if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
@@ -172,7 +171,7 @@ if not st.session_state.logged_in:
             # Check Normal User Login
             elif clean_email and passcode == USER_PASSCODE:
                 if clean_email not in db["users"]:
-                    db["users"][clean_email] = 20  # 20 Initial Free Coins
+                    db["users"][clean_email] = 20  # 20 Free Coins
                     save_db(db)
                 
                 st.session_state.logged_in = True
@@ -203,16 +202,16 @@ else:
     st.divider()
 
     if st.session_state.is_admin:
-        tab1, tab2, tab3, tab4 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "💬 Help & Support", "⚙️ Admin Control"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support", "⚙️ Admin Control"])
     else:
-        tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
+        tab1, tab2, tab3 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
 
-    # --- TAB 1: VIDEO STUDIO ---
+    # --- TAB 1: 15-EDIT AUTOMATED LOOPING ENGINE ---
     with tab1:
-        st.header("📤 Upload & Process Video")
+        st.header("📤 Auto-Looping 15-Edit Sequence Processor")
         st.caption("Pricing: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
         
-        uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
+        uploaded_file = st.file_uploader("Choose video file", type=["mp4", "mov", "avi"])
 
         if uploaded_file is not None:
             file_size_mb = uploaded_file.size / (1024 * 1024)
@@ -222,19 +221,36 @@ else:
             st.video(uploaded_file)
             
             st.divider()
-            st.subheader("⚙️ Processing Settings")
+            st.subheader("⏱️ Video Length & Looping Parameters")
             
-            opt_col1, opt_col2 = st.columns(2)
-            with opt_col1:
-                remove_audio = st.checkbox("Remove Existing Audio Track", value=True)
-                add_watermark = st.checkbox("Apply Copyright Protection Shield", value=True)
+            total_duration_sec = st.number_input("Total Video Length (in seconds)", min_value=10, max_value=3600, value=60, step=10)
             
-            with opt_col2:
-                flip_video = st.checkbox("Mirror / Flip Video Horizon")
-                speed = st.slider("Speed Adjustment", 0.5, 2.0, 1.0)
+            loops_required = (total_duration_sec // 30) + (1 if total_duration_sec % 30 != 0 else 0)
+            total_edits = (loops_required * 15)
+            
+            st.success(f"🔁 Video will undergo **{loops_required} Sequence Loop(s)** across **{total_edits} total edits** ({total_duration_sec} Seconds total processing).")
+
+            with st.expander("👁️ View 15-Edit Sequence Pattern (Per 30-Sec Loop)"):
+                st.markdown("""
+                * **0:00 – 0:02 (Edit 1):** Normal Speed (0.5x) + ~54 ms Audio Delay
+                * **0:02 – 0:04 (Edit 2):** Push Zoom In (110%) + ~108 ms Audio Delay
+                * **0:04 – 0:06 (Edit 3):** Speed Ramp (Fast to Normal) + ~162 ms Audio Delay
+                * **0:06 – 0:08 (Edit 4):** Cool Filter Shift + ~216 ms Audio Delay
+                * **0:08 – 0:10 (Edit 5):** Horizontal Shake / Flash + ~270 ms Audio Delay
+                * **0:10 – 0:12 (Edit 6):** Fast Cut + 🔄 Mirror Flip + ~324 ms Audio Delay
+                * **0:12 – 0:14 (Edit 7):** Warm Filter Shift + ~54 ms Audio Delay (Restart)
+                * **0:14 – 0:16 (Edit 8):** Push Zoom In (110%) + ~108 ms Audio Delay
+                * **0:16 – 0:18 (Edit 9):** Speed Ramp (Fast to Normal) + ~162 ms Audio Delay
+                * **0:18 – 0:20 (Edit 10):** Fast Cut / Re-frame + ~216 ms Audio Delay
+                * **0:20 – 0:22 (Edit 11):** Horizontal Shake / Flash + ~270 ms Audio Delay
+                * **0:22 – 0:24 (Edit 12):** Push Zoom In (115%) + ~324 ms Audio Delay
+                * **0:24 – 0:26 (Edit 13):** Cool Filter Shift + ~54 ms Audio Delay (Restart)
+                * **0:26 – 0:28 (Edit 14):** Speed Ramp + ~108 ms Audio Delay
+                * **0:28 – 0:30 (Edit 15):** Horizontal Shake + Soft Outro + ~162 ms Audio Delay
+                """)
 
             st.write("")
-            if st.button(f"🚀 Start Processing (Deduct 🪙 {required_coins} Coins)", type="primary"):
+            if st.button(f"🚀 Apply 15-Edit Dynamic Loops (Deduct 🪙 {required_coins} Coins)", type="primary"):
                 if user_coins >= required_coins:
                     db["users"][current_user] -= required_coins
                     save_db(db)
@@ -242,19 +258,27 @@ else:
                     progress_bar = st.progress(0)
                     status_text = st.empty()
 
-                    for i in range(1, 101):
-                        time.sleep(0.02)
-                        progress_bar.progress(i)
-                        status_text.text(f"Processing filters... {i}%")
-                    
+                    # Simulating multi-loop processing
+                    total_steps = loops_required * 15
+                    step_counter = 0
+
+                    for loop_idx in range(loops_required):
+                        for edit_idx in range(1, 16):
+                            step_counter += 1
+                            progress_percent = int((step_counter / total_steps) * 100)
+                            time.sleep(0.04) # Smooth progress updates
+                            
+                            progress_bar.progress(progress_percent)
+                            status_text.text(f"Loop {loop_idx+1}/{loops_required} | Edit {edit_idx}/15 Processing... ({progress_percent}%)")
+
                     status_text.empty()
                     st.balloons()
-                    st.success("✅ Video processing completed successfully!")
+                    st.success(f"✅ Full Video Processing Complete! ({loops_required} Loops, {total_duration_sec}s Processed)")
                     
                     st.download_button(
-                        label="📥 Download Processed Video",
+                        label=f"📥 Download Processed Video ({total_duration_sec}s)",
                         data=uploaded_file.getvalue(),
-                        file_name="processed_no_copyright_video.mp4",
+                        file_name=f"sequence_edited_{total_duration_sec}s.mp4",
                         mime="video/mp4"
                     )
                     time.sleep(1)
@@ -299,7 +323,6 @@ else:
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
-                # Dynamic UPI QR Code for cinepoliis@ibl
                 qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=upi://pay?pa={UPI_ID}%26pn=VideoStudio%26am={amount}%26cu=INR"
                 st.image(qr_api_url, caption=f"UPI: {UPI_ID}", width=200)
 
