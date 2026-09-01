@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import json
 import os
+import hashlib
 
 # -----------------------------------------------------------------------------
 # 1. PAGE CONFIG & CUSTOM THEME
@@ -12,25 +13,35 @@ st.set_page_config(
     layout="centered"
 )
 
-# Configuration & Security
-ADMIN_EMAIL = "krish9agupt@gmail.com"
-ADMIN_PASSCODE = "Krish9A"
+# Encryption Helper Function (SHA-256)
+def hash_text(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+# Admin Credentials (Encrypted)
+# Email: krish9agupt@gmail.com
+# Passcode: Krish9A
+ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
+ADMIN_PASSCODE_HASH = hash_text("Krish9A")
+
 USER_PASSCODE = "123456"
-UPI_ID = "krish9agupt@ybl"  # 👈 यहाँ अपना असली UPI ID बदलें (उदा. 993188xxxx@ybl)
+UPI_ID = "cinepoliis@ibl"
 DB_FILE = "database.json"
 
 # Permanent Database Setup
 def load_db():
     if not os.path.exists(DB_FILE):
-        default_db = {"users": {}, "pending_requests": []}
+        default_db = {"users": {}, "pending_requests": [], "support_tickets": []}
         with open(DB_FILE, "w") as f:
             json.dump(default_db, f)
         return default_db
     try:
         with open(DB_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            if "support_tickets" not in data:
+                data["support_tickets"] = []
+            return data
     except:
-        return {"users": {}, "pending_requests": []}
+        return {"users": {}, "pending_requests": [], "support_tickets": []}
 
 def save_db(db):
     with open(DB_FILE, "w") as f:
@@ -136,10 +147,11 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. DEVICE LOGIN WITH PERMANENT COIN SAVE
+# 3. DEVICE LOGIN (SHOWING USER PASSCODE & ENCRYPTED ADMIN LOGIN)
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
+    st.info(f"💡 Default User Passcode: **{USER_PASSCODE}**")
     
     with st.form("login_form"):
         email = st.text_input("Email Address", placeholder="user@example.com")
@@ -149,13 +161,8 @@ if not st.session_state.logged_in:
         if submit_button:
             clean_email = email.lower().strip()
             
-            # Create user in Database if new
-            if clean_email and clean_email not in db["users"]:
-                db["users"][clean_email] = 20  # 20 Free Coins
-                save_db(db)
-
-            # Check Admin Login
-            if clean_email == ADMIN_EMAIL.lower() and passcode == ADMIN_PASSCODE:
+            # Check Admin Credentials via Hash Comparison
+            if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
                 st.session_state.is_admin = True
@@ -164,18 +171,22 @@ if not st.session_state.logged_in:
                 st.rerun()
             # Check Normal User Login
             elif clean_email and passcode == USER_PASSCODE:
+                if clean_email not in db["users"]:
+                    db["users"][clean_email] = 20  # 20 Initial Free Coins
+                    save_db(db)
+                
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
                 st.session_state.is_admin = False
                 st.success("Access Granted!")
                 time.sleep(1)
                 st.rerun()
-            elif clean_email == ADMIN_EMAIL.lower() and passcode != ADMIN_PASSCODE:
+            elif hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) != ADMIN_PASSCODE_HASH:
                 st.error("Incorrect Admin Passcode!")
             elif not clean_email:
                 st.error("Please enter a valid email address.")
             else:
-                st.error("Invalid passcode! Enter '123456'.")
+                st.error("Invalid passcode! Use '123456'.")
 
 # -----------------------------------------------------------------------------
 # 4. DASHBOARD & TOOLS
@@ -192,9 +203,9 @@ else:
     st.divider()
 
     if st.session_state.is_admin:
-        tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "⚙️ Admin Approval"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "💬 Help & Support", "⚙️ Admin Control"])
     else:
-        tab1, tab2 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins"])
+        tab1, tab2, tab3 = st.tabs(["📹 Video Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
 
     # --- TAB 1: VIDEO STUDIO ---
     with tab1:
@@ -225,7 +236,6 @@ else:
             st.write("")
             if st.button(f"🚀 Start Processing (Deduct 🪙 {required_coins} Coins)", type="primary"):
                 if user_coins >= required_coins:
-                    # Deduct coins and update Permanent DB
                     db["users"][current_user] -= required_coins
                     save_db(db)
                     
@@ -289,9 +299,9 @@ else:
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
-                # Reliable Dynamic Dynamic UPI QR Code Generation
+                # Dynamic UPI QR Code for cinepoliis@ibl
                 qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=upi://pay?pa={UPI_ID}%26pn=VideoStudio%26am={amount}%26cu=INR"
-                st.image(qr_api_url, caption=f"Scan to pay ₹{amount}", width=200)
+                st.image(qr_api_url, caption=f"UPI: {UPI_ID}", width=200)
 
             with pay_col2:
                 utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.", max_chars=12)
@@ -309,37 +319,85 @@ else:
                     else:
                         st.error("Please enter a valid 12-digit numeric UTR Number.")
 
-    # --- TAB 3: ADMIN APPROVAL PANEL ---
-    if st.session_state.is_admin:
-        with tab3:
-            st.header("⚙️ Admin Payment Verification Panel")
-            st.caption("Cross-check UTR numbers with your PhonePe / Bank app before approving.")
+    # --- TAB 3: HELP & SUPPORT ---
+    with tab3:
+        st.header("💬 Help & Support")
+        st.caption("Need help with coins, payments, or processing? Submit a message below.")
+        
+        with st.form("support_form"):
+            user_msg = st.text_area("Your Message / Query", placeholder="Describe your problem or question here...")
+            sub_ticket = st.form_submit_button("📩 Send Message")
+            if sub_ticket and user_msg:
+                db["support_tickets"].append({
+                    "user": current_user,
+                    "message": user_msg,
+                    "reply": "No reply yet from Admin.",
+                    "status": "Pending"
+                })
+                save_db(db)
+                st.success("Message sent to Admin successfully!")
 
+        st.divider()
+        st.subheader("📋 Your Past Tickets")
+        my_tickets = [t for t in db["support_tickets"] if t["user"] == current_user]
+        
+        if not my_tickets:
+            st.write("No previous support messages.")
+        else:
+            for t in reversed(my_tickets):
+                st.markdown(f"**Query:** {t['message']}")
+                st.markdown(f"**Admin Reply:** {t['reply']}")
+                st.caption(f"Status: `{t['status']}`")
+                st.divider()
+
+    # --- TAB 4: ADMIN CONTROL PANEL ---
+    if st.session_state.is_admin:
+        with tab4:
+            st.header("⚙️ Admin Dashboard & Control")
+            
+            # --- Payment Approval Section ---
+            st.subheader("💳 Pending Payment Approvals")
             pending_list = db.get("pending_requests", [])
 
             if len(pending_list) == 0:
-                st.write("No pending payment verification requests.")
+                st.write("No pending payment requests.")
             else:
                 for idx, req in enumerate(list(pending_list)):
                     st.warning(f"**User:** {req['user']} | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}` | **Coins:** 🪙 {req['coins']}")
                     col_a, col_b = st.columns(2)
                     with col_a:
-                        if st.button(f"✅ Approve & Add {req['coins']} Coins", key=f"app_{idx}"):
+                        if st.button(f"✅ Approve ({req['coins']} Coins)", key=f"app_{idx}"):
                             req_user = req["user"]
-                            coins_to_add = req["coins"]
-                            
-                            # Update User Coins in Permanent DB
-                            db["users"][req_user] = db["users"].get(req_user, 0) + coins_to_add
+                            db["users"][req_user] = db["users"].get(req_user, 0) + req["coins"]
                             db["pending_requests"].pop(idx)
                             save_db(db)
-                            
-                            st.success(f"Payment Verified! Added {coins_to_add} coins to {req_user}.")
+                            st.success(f"Approved coins for {req_user}")
                             time.sleep(1)
                             st.rerun()
                     with col_b:
-                        if st.button("❌ Reject Payment", key=f"rej_{idx}"):
+                        if st.button("❌ Reject", key=f"rej_{idx}"):
                             db["pending_requests"].pop(idx)
                             save_db(db)
-                            st.error("Payment rejected.")
+                            st.error("Rejected.")
                             time.sleep(1)
                             st.rerun()
+
+            st.divider()
+
+            # --- Support Tickets Management Section ---
+            st.subheader("💬 User Support Requests")
+            tickets = db.get("support_tickets", [])
+            
+            if len(tickets) == 0:
+                st.write("No support tickets found.")
+            else:
+                for idx, t in enumerate(list(tickets)):
+                    st.info(f"**From:** {t['user']} | **Query:** {t['message']}")
+                    reply_text = st.text_input("Reply to User", value="" if t["reply"] == "No reply yet from Admin." else t["reply"], key=f"rep_{idx}")
+                    if st.button("Reply & Mark Resolved", key=f"btn_rep_{idx}"):
+                        db["support_tickets"][idx]["reply"] = reply_text
+                        db["support_tickets"][idx]["status"] = "Resolved"
+                        save_db(db)
+                        st.success("Reply sent successfully!")
+                        time.sleep(1)
+                        st.rerun()
