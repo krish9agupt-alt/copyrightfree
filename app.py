@@ -1,3 +1,4 @@
+
 import streamlit as st
 from supabase import create_client
 import time
@@ -8,14 +9,14 @@ st.set_page_config(page_title="No Copyright", page_icon="🎬", layout="wide")
 # Supabase Connection
 @st.cache_resource
 def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets["SUPABASE_URL"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 try:
     supabase = init_supabase()
 except Exception as e:
-    st.error("⚠️ Supabase Secrets missing! Please set SUPABASE_URL and SUPABASE_KEY in Streamlit Secrets.")
+    st.error("⚠️ Connection Error: Please check Streamlit Secrets.")
     st.stop()
 
 # Session State Initializations
@@ -49,13 +50,16 @@ if st.session_state.user is None:
         login_mobile = st.text_input("Mobile Number", key="log_mob")
         login_pass = st.text_input("Password", type="password", key="log_pass")
         if st.button("Login"):
-            res = supabase.table("users").select("*").eq("mobile_number", login_mobile).eq("password", login_pass).execute()
-            if len(res.data) > 0:
-                st.session_state.user = res.data[0]
-                st.success("Successfully Logged In!")
-                st.rerun()
-            else:
-                st.error("Invalid Mobile Number or Password")
+            try:
+                res = supabase.table("users").select("*").eq("mobile_number", login_mobile).eq("password", login_pass).execute()
+                if len(res.data) > 0:
+                    st.session_state.user = res.data[0]
+                    st.success("Successfully Logged In!")
+                    st.rerun()
+                else:
+                    st.error("Invalid Mobile Number or Password")
+            except Exception as e:
+                st.error(f"Connection Failed: {e}")
                 
     with tab2:
         st.subheader("Create New Account")
