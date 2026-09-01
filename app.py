@@ -1,5 +1,4 @@
 import streamlit as st
-from supabase import create_client
 import time
 
 # -----------------------------------------------------------------------------
@@ -29,74 +28,63 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# 2. SUPABASE INITIALIZATION & HARD-CLEAN URL
-# -----------------------------------------------------------------------------
-@st.cache_resource
-def get_supabase_client():
-    # Forcefully removes all line breaks (\n, \r), quotes, and spaces
-    raw_url = str(st.secrets["SUPABASE_URL"]).replace("\n", "").replace("\r", "").replace(" ", "").replace('"', '').strip()
-    raw_key = str(st.secrets["SUPABASE_KEY"]).replace("\n", "").replace("\r", "").replace(" ", "").replace('"', '').strip()
-    return create_client(raw_url, raw_key)
-
-supabase = get_supabase_client()
-
 # Session State Initializations
-if "user" not in st.session_state:
-    st.session_state.user = None
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
 
 if "coins" not in st.session_state:
     st.session_state.coins = 10
 
-# Catch authentication session automatically
-try:
-    session = supabase.auth.get_session()
-    if session:
-        st.session_state.user = session.user
-except Exception:
-    pass
-
 # -----------------------------------------------------------------------------
-# 3. HEADER & TOP NAVIGATION BAR
+# 2. HEADER
 # -----------------------------------------------------------------------------
 st.markdown("<h1 class='main-header'>🎬 No Copyright Video Studio</h1>", unsafe_allow_html=True)
 
 top_col1, top_col2 = st.columns([3, 1])
 
 with top_col1:
-    if st.session_state.user:
-        st.success(f"Logged in as: **{st.session_state.user.email}**")
+    if st.session_state.logged_in:
+        st.success(f"Logged in as: **{st.session_state.user_email}**")
     else:
-        st.info("Welcome! Please sign in to process videos.")
+        st.info("Welcome! Enter your details to access the studio.")
 
 with top_col2:
-    if st.session_state.user:
+    if st.session_state.logged_in:
         if st.button("Sign Out", type="secondary"):
-            supabase.auth.sign_out()
-            st.session_state.user = None
+            st.session_state.logged_in = False
+            st.session_state.user_email = ""
             st.rerun()
 
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 4. VIEW 1: DIRECT GOOGLE LOGIN REDIRECT
+# 3. DEVICE LOGIN FORM
 # -----------------------------------------------------------------------------
-if st.session_state.user is None:
-    st.subheader("🔑 Account Authentication")
-    st.write("Click the button below to sign in directly with Google.")
+if not st.session_state.logged_in:
+    st.subheader("🔑 Access Studio Dashboard")
     
-    if st.button("🌐 Sign in with Google", type="primary"):
-        res = supabase.auth.sign_in_with_oauth({
-            "provider": "google",
-            "options": {
-                "redirect_to": "https://copyrightfree.streamlit.app"
-            }
-        })
-        # Instant Auto-Redirect Script
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={res.url}">', unsafe_allow_html=True)
+    with st.form("login_form"):
+        email = st.text_input("Email Address", placeholder="user@example.com")
+        passcode = st.text_input("Access Passcode", type="password", placeholder="Enter passcode (123456)")
+        submit_button = st.form_submit_button("🚀 Enter Dashboard", type="primary")
+
+        if submit_button:
+            if email and passcode == "123456":
+                st.session_state.logged_in = True
+                st.session_state.user_email = email
+                st.success("Login Successful! Loading dashboard...")
+                time.sleep(1)
+                st.rerun()
+            elif not email:
+                st.error("Please enter a valid email address.")
+            else:
+                st.error("Invalid passcode! Enter '123456'.")
 
 # -----------------------------------------------------------------------------
-# 5. VIEW 2: MODERN DASHBOARD & TOOLS
+# 4. DASHBOARD & TOOLS
 # -----------------------------------------------------------------------------
 else:
     # Key Stats Dashboard Cards
