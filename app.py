@@ -20,13 +20,22 @@ except ImportError:
     import moviepy.video.fx as vfx
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & CUSTOM THEME
+# 1. PAGE CONFIG & THEME STATE
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="No Copyright Video Studio - Dynamic Sequences", 
     page_icon="🎬", 
     layout="centered"
 )
+
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+
+if "processed_video_path" not in st.session_state:
+    st.session_state.processed_video_path = None
+
+if "processed_quality" not in st.session_state:
+    st.session_state.processed_quality = None
 
 def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
@@ -54,50 +63,62 @@ def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-st.markdown("""
+# Dynamic CSS for Dark / Light Theme & Hiding Streamlit Branding
+bg_color = "#0B0C10" if st.session_state.theme == "dark" else "#FFFFFF"
+text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#000000"
+card_bg = "#121212" if st.session_state.theme == "dark" else "#F0F2F5"
+
+st.markdown(f"""
     <style>
-    .stApp {
-        background-color: #0B0C10;
-        color: #FFFFFF;
-    }
-    [data-testid="stSidebar"] {
+    /* HIDE TOP HEADER, GITHUB, EDIT, AND STAR ICONS */
+    #MainMenu {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    [data-testid="stHeader"] {{display: none;}}
+    
+    .stApp {{
+        background-color: {bg_color};
+        color: {text_color};
+    }}
+    [data-testid="stSidebar"] {{
         display: none;
-    }
-    .main-header {
+    }}
+    .main-header {{
         text-align: center;
         font-weight: 900;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.2rem;
-    }
-    .sub-header {
+    }}
+    .sub-header {{
         text-align: center;
-        color: #E0E0E0;
+        color: {text_color};
+        opacity: 0.8;
         font-size: 0.95rem;
-        margin-bottom: 2rem;
-    }
-    .plan-card {
-        background: #121212;
+        margin-bottom: 1.5rem;
+    }}
+    .plan-card {{
+        background: {card_bg};
         border: 2px solid #FFD700;
         border-radius: 15px;
         padding: 1.2rem;
         text-align: center;
         margin-bottom: 1rem;
         box-shadow: 0px 4px 15px rgba(255, 215, 0, 0.15);
-    }
-    .plan-card h3 {
+    }}
+    .plan-card h3 {{
         color: #FF69B4 !important;
         margin-bottom: 0.5rem;
-    }
-    .plan-card h2 {
+    }}
+    .plan-card h2 {{
         color: #FFD700 !important;
-    }
-    .plan-card p {
-        color: #FFFFFF !important;
+    }}
+    .plan-card p {{
+        color: {text_color} !important;
         font-weight: bold;
-    }
-    .stButton>button {
+    }}
+    .stButton>button {{
         width: 100%;
         border-radius: 10px;
         height: 3em;
@@ -105,11 +126,11 @@ st.markdown("""
         color: #000000;
         font-weight: bold;
         border: none;
-    }
-    .stButton>button:hover {
+    }}
+    .stButton>button:hover {{
         opacity: 0.9;
         color: #FFFFFF;
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -179,10 +200,19 @@ def apply_custom_effects(clip, edit_num):
     return clip
 
 # -----------------------------------------------------------------------------
-# 2. HEADER
+# 2. HEADER & THEME TOGGLE
 # -----------------------------------------------------------------------------
-st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-header'>AI Dynamic 15-Edit Sequence Engine</p>", unsafe_allow_html=True)
+top_hdr1, top_hdr2 = st.columns([4, 1])
+
+with top_hdr1:
+    st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-header'>AI Dynamic 15-Edit Sequence Engine</p>", unsafe_allow_html=True)
+
+with top_hdr2:
+    theme_btn_label = "☀️ Light" if st.session_state.theme == "dark" else "🌙 Dark"
+    if st.button(theme_btn_label, key="theme_toggle"):
+        st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+        st.rerun()
 
 top_col1, top_col2 = st.columns([3, 1])
 
@@ -199,6 +229,7 @@ with top_col2:
             st.session_state.logged_in = False
             st.session_state.user_email = ""
             st.session_state.is_admin = False
+            st.session_state.processed_video_path = None
             st.rerun()
 
 st.divider()
@@ -363,7 +394,6 @@ else:
                                 new_w += 1
                             final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-                        # CLEAN SAFE ENCODING CALL
                         final_clip.write_videofile(
                             output_path, 
                             codec="libx264", 
@@ -376,23 +406,11 @@ else:
                         
                         process_bar.progress(100, text="✅ AI Editing Engine Processing Complete! (100%)")
                         status_box.empty()
+                        
+                        # Save State to Keep Download Button Visible
+                        st.session_state.processed_video_path = output_path
+                        st.session_state.processed_quality = quality_option.split()[0]
                         st.balloons()
-
-                        st.divider()
-                        st.subheader("📥 Download Ready Video")
-                        st.video(output_path)
-                        
-                        with open(output_path, "rb") as file:
-                            st.download_button(
-                                label=f"📥 Download Processed Video ({quality_option.split()[0]})",
-                                data=file,
-                                file_name=f"processed_{quality_option.split()[0]}_video.mp4",
-                                mime="video/mp4",
-                                type="primary"
-                            )
-                        
-                        time.sleep(0.5)
-                        st.rerun()
 
                     except Exception as e:
                         fresh_db = load_db()
@@ -401,6 +419,22 @@ else:
                         st.error(f"❌ Video Processing Error: {str(e)}. Coins have been refunded.")
                 else:
                     st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {current_balance} Coins.")
+
+        # DISPLAY PERSISTENT DOWNLOAD SECTION IF VIDEO IS PROCESSED
+        if st.session_state.processed_video_path and os.path.exists(st.session_state.processed_video_path):
+            st.divider()
+            st.subheader("📥 Download Ready Video")
+            st.video(st.session_state.processed_video_path)
+            
+            with open(st.session_state.processed_video_path, "rb") as file:
+                st.download_button(
+                    label=f"📥 Download Processed Video ({st.session_state.processed_quality})",
+                    data=file,
+                    file_name=f"processed_{st.session_state.processed_quality}_video.mp4",
+                    mime="video/mp4",
+                    type="primary",
+                    key="persistent_download_btn"
+                )
 
     # --- TAB 2: RECHARGE ---
     with tab2:
