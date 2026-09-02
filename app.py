@@ -180,8 +180,21 @@ def apply_custom_effects(clip, edit_num):
 
     return clip
 
-def process_single_video(input_path, output_path, target_height, bitrate, watermark_file, watermark_pos, mute_audio, bg_music_file, progress_bar):
-    progress_bar.progress(10, text="🎬 Loading video file...")
+def update_progress(pct, status_msg, progress_bar, start_time):
+    pct = max(1, min(pct, 100))
+    elapsed = time.time() - start_time
+    if pct > 1:
+        est_total = elapsed / (pct / 100.0)
+        remaining = max(0, int(est_total - elapsed))
+    else:
+        remaining = 0
+    display_text = f"[{pct}%] {status_msg} | ⏱️ Time Remaining: {remaining}s"
+    progress_bar.progress(pct, text=display_text)
+
+def process_single_video(input_path, output_path, target_height, bitrate, watermark_file, watermark_pos, progress_bar):
+    start_time = time.time()
+    update_progress(5, "🎬 Loading video file...", progress_bar, start_time)
+    
     video = VideoFileClip(input_path)
     actual_vid_duration = video.duration
     orig_w, orig_h = video.size
@@ -191,7 +204,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
 
     for edit_idx in range(1, 16):
         pct = 10 + int((edit_idx / 15.0) * 50)
-        progress_bar.progress(pct, text=f"⚡ Applying Sequence Effect #{edit_idx}/15...")
+        update_progress(pct, f"⚡ Applying Sequence Effect #{edit_idx}/15...", progress_bar, start_time)
         seg_start = (edit_idx - 1) * cut_duration
         seg_end = edit_idx * cut_duration
         subclip = video.subclip(seg_start, seg_end)
@@ -200,34 +213,24 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
     final_clip = concatenate_videoclips(clips)
 
     if orig_h != target_height:
-        progress_bar.progress(65, text="📐 Resizing Video Dimensions...")
+        update_progress(65, "📐 Resizing Video Dimensions...", progress_bar, start_time)
         aspect_ratio = orig_w / float(orig_h)
         new_w = int(target_height * aspect_ratio)
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
     if watermark_file is not None:
-        progress_bar.progress(72, text="🖼️ Adding Custom Logo Overlay...")
+        update_progress(75, "🖼️ Adding Custom Logo Overlay...", progress_bar, start_time)
         wm_path = "temp_wm.png"
         with open(wm_path, "wb") as f: f.write(watermark_file.read())
         pos_map = {"Top-Left": ("left", "top"), "Top-Right": ("right", "top"), "Bottom-Left": ("left", "bottom"), "Bottom-Right": ("right", "bottom")}
         logo = (ImageClip(wm_path).set_duration(final_clip.duration).resize(height=int(final_clip.h * 0.12)).set_pos(pos_map.get(watermark_pos, ("right", "bottom"))))
         final_clip = CompositeVideoClip([final_clip, logo])
 
-    if mute_audio:
-        progress_bar.progress(80, text="🔇 Muting Original Audio...")
-        final_clip = final_clip.without_audio()
-    elif bg_music_file is not None:
-        progress_bar.progress(80, text="🎵 Mixing Non-Copyright Music (Vol 2.0)...")
-        music_path = "temp_music.mp3"
-        with open(music_path, "wb") as f: f.write(bg_music_file.read())
-        bg_audio = AudioFileClip(music_path).volumex(2.0)
-        bg_audio = afx.audio_loop(bg_audio, duration=final_clip.duration) if bg_audio.duration < final_clip.duration else bg_audio.subclip(0, final_clip.duration)
-        final_clip.audio = CompositeAudioClip([final_clip.audio, bg_audio]) if final_clip.audio is not None else bg_audio
-
-    progress_bar.progress(88, text="⚙️ Rendering & Encoding Final Output...")
+    update_progress(85, "⚙️ Rendering & Encoding Final Output...", progress_bar, start_time)
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
-    progress_bar.progress(100, text="✅ Video Processing Complete!")
+    
+    update_progress(100, "✅ Video Processing Complete!", progress_bar, start_time)
 
 # -----------------------------------------------------------------------------
 # SIDEBAR CONTROLS (Theme Toggle & User Profile)
@@ -352,13 +355,6 @@ else:
                 wm_file = st.file_uploader("Upload Logo Watermark (Optional)", type=["png", "jpg"])
             with col_wm2:
                 wm_pos = st.selectbox("Logo Position", ["Bottom-Right", "Bottom-Left", "Top-Right", "Top-Left"]) if wm_file else "Bottom-Right"
-            
-            st.subheader("🎵 Audio Setup")
-            col_au1, col_au2 = st.columns(2)
-            with col_au1:
-                mute_audio = st.checkbox("Mute Original Sound Entirely")
-            with col_au2:
-                bg_music_file = st.file_uploader("Overlay Non-Copyright Music (Vol 2.0)", type=["mp3", "wav"])
 
             if st.button(f"🚀 Render Video & Deduct {total_required_coins} Coins", type="primary"):
                 fresh_db = load_db()
@@ -374,14 +370,14 @@ else:
 
                     for idx, up_file in enumerate(uploaded_files):
                         st.subheader(f"🎬 Processing File #{idx+1}: {up_file.name}")
-                        p_bar = st.progress(0, text="Initializing Engine...")
+                        p_bar = st.progress(0, text="[0%] Initializing Engine... | ⏱️ Time Remaining: --s")
                         
                         temp_in = f"temp_{idx}.mp4"
                         out_path = f"exports/{int(time.time())}_{idx}_{up_file.name}"
                         with open(temp_in, "wb") as f: f.write(up_file.read())
 
                         try:
-                            process_single_video(temp_in, out_path, target_height, bitrate, wm_file, wm_pos, mute_audio, bg_music_file, p_bar)
+                            process_single_video(temp_in, out_path, target_height, bitrate, wm_file, wm_pos, p_bar)
                             
                             db_hist = load_db()
                             if current_user not in db_hist["history"]: db_hist["history"][current_user] = []
