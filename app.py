@@ -58,9 +58,12 @@ def load_db():
     except Exception:
         return {"users": {}, "pending_requests": [], "support_tickets": [], "history": {}}
 
+# Safe JSON Save Mechanism (Force Flush & OS Sync)
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
+        f.flush()
+        os.fsync(f.fileno())
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -159,6 +162,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
+    # Watermark Processing
     if watermark_file is not None:
         progress_bar.progress(72, text="🖼️ Adding Custom Logo Overlay...")
         wm_path = "temp_wm.png"
@@ -167,6 +171,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         logo = (ImageClip(wm_path).set_duration(final_clip.duration).resize(height=int(final_clip.h * 0.12)).set_pos(pos_map.get(watermark_pos, ("right", "bottom"))))
         final_clip = CompositeVideoClip([final_clip, logo])
 
+    # Audio Customization
     if mute_audio:
         progress_bar.progress(80, text="🔇 Muting Original Audio...")
         final_clip = final_clip.without_audio()
@@ -199,8 +204,8 @@ if not st.session_state.logged_in:
                 st.rerun()
             elif clean_email and passcode == USER_PASSCODE:
                 db = load_db()
-                # केवल नए यूजर को 10 वेलकम कॉइन्स मिलेंगे, पुराने यूजर का बैलेंस चेंज नहीं होगा
-                if clean_email not in db["users"]: 
+                # Strict Persistence Check: केवल बिलकुल नए यूजर को 10 कॉइन मिलेंगे
+                if clean_email not in db["users"]:
                     db["users"][clean_email] = 10
                     save_db(db)
                 st.session_state.logged_in, st.session_state.user_email, st.session_state.is_admin = True, clean_email, False
@@ -211,7 +216,7 @@ else:
     current_user = st.session_state.user_email
     db_data = load_db()
     
-    # हमेशा डेटाबेस से लेटेस्ट बैलेंस फेच करें
+    # Strict Balance Load: डेटाबेस में जो balance दर्ज है वही दिखाया जाएगा
     if not st.session_state.is_admin:
         if current_user not in db_data["users"]:
             db_data["users"][current_user] = 10
@@ -231,6 +236,7 @@ else:
 
     st.divider()
 
+    # Dynamic Tabs Order Requested
     tabs_list = ["📹 Sequence Studio", "📜 Download History", "🪙 Scan & Buy Coins", "💬 Help & Support"]
     if st.session_state.is_admin: tabs_list.append("⚙️ Admin Control")
     
@@ -254,6 +260,7 @@ else:
             res_map = {"720p (Free)": (720, 0, "4000k"), "1080p Full HD (3 Coins)": (1080, 3, "12000k"), "2K Ultra HD (5 Coins)": (1440, 5, "24000k"), "4K Ultra HD (10 Coins)": (2160, 10, "45000k")}
             target_height, quality_coins, bitrate = res_map[quality_option]
 
+            # Calculate total coins needed
             total_required_coins = 0
             for file in uploaded_files:
                 base = 5 if (file.size / (1024 * 1024)) < 50 else 10
@@ -261,6 +268,7 @@ else:
 
             st.info(f"🪙 **Total Required Coins:** `{total_required_coins} Coins`")
 
+            # Branding/Audio Options
             wm_file = st.file_uploader("Upload Logo Overlay (Optional)", type=["png", "jpg"])
             wm_pos = st.selectbox("Logo Position", ["Bottom-Right", "Bottom-Left", "Top-Right", "Top-Left"]) if wm_file else "Bottom-Right"
             mute_audio = st.checkbox("Mute Original Video Sound")
@@ -271,11 +279,11 @@ else:
                 bal = fresh_db["users"].get(current_user, 0) if not st.session_state.is_admin else 999999
 
                 if bal >= total_required_coins:
-                    # STRICT DEDUCTION & SAVE TO JSON IMMEDIATELY
+                    # COIN DEDUCTION (Safe Forced JSON Save)
                     if not st.session_state.is_admin:
                         fresh_db["users"][current_user] -= total_required_coins
                         save_db(fresh_db)
-                        st.toast(f"🪙 {total_required_coins} Coins Deducted! New Balance: {fresh_db['users'][current_user]}", icon="💸")
+                        st.toast(f"🪙 {total_required_coins} Coins Deducted Successfully!", icon="💸")
 
                     if not os.path.exists("exports"): os.makedirs("exports")
 
@@ -288,8 +296,10 @@ else:
                         with open(temp_in, "wb") as f: f.write(up_file.read())
 
                         try:
+                            # REALTIME PROGRESS BAR DRIVEN FUNCTION
                             process_single_video(temp_in, out_path, target_height, bitrate, wm_file, wm_pos, mute_audio, bg_music_file, p_bar)
                             
+                            # Add to History DB & Safe Save
                             db_hist = load_db()
                             if current_user not in db_hist["history"]: db_hist["history"][current_user] = []
                             db_hist["history"][current_user].append({
