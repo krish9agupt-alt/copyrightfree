@@ -180,8 +180,7 @@ def apply_custom_effects(clip, edit_num):
 
     return clip
 
-def process_single_video(input_path, output_path, target_height, bitrate, watermark_file, watermark_pos, mute_audio, bg_music_file, progress_bar):
-    progress_bar.progress(10, text="🎬 Loading video file...")
+def process_single_video(input_path, output_path, target_height, bitrate, watermark_file, watermark_pos, mute_audio, bg_music_file, status_text, progress_bar, total_seconds=15):
     video = VideoFileClip(input_path)
     actual_vid_duration = video.duration
     orig_w, orig_h = video.size
@@ -190,8 +189,6 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
     cut_duration = actual_vid_duration / 15.0
 
     for edit_idx in range(1, 16):
-        pct = 10 + int((edit_idx / 15.0) * 50)
-        progress_bar.progress(pct, text=f"⚡ Applying Sequence Effect #{edit_idx}/15...")
         seg_start = (edit_idx - 1) * cut_duration
         seg_end = edit_idx * cut_duration
         subclip = video.subclip(seg_start, seg_end)
@@ -200,14 +197,12 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
     final_clip = concatenate_videoclips(clips)
 
     if orig_h != target_height:
-        progress_bar.progress(65, text="📐 Resizing Video Dimensions...")
         aspect_ratio = orig_w / float(orig_h)
         new_w = int(target_height * aspect_ratio)
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
     if watermark_file is not None:
-        progress_bar.progress(72, text="🖼️ Adding Custom Logo Overlay...")
         wm_path = "temp_wm.png"
         with open(wm_path, "wb") as f: f.write(watermark_file.read())
         pos_map = {"Top-Left": ("left", "top"), "Top-Right": ("right", "top"), "Bottom-Left": ("left", "bottom"), "Bottom-Right": ("right", "bottom")}
@@ -215,19 +210,29 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         final_clip = CompositeVideoClip([final_clip, logo])
 
     if mute_audio:
-        progress_bar.progress(80, text="🔇 Muting Original Audio...")
         final_clip = final_clip.without_audio()
     elif bg_music_file is not None:
-        progress_bar.progress(80, text="🎵 Mixing Non-Copyright Music (Vol 2.0)...")
         music_path = "temp_music.mp3"
         with open(music_path, "wb") as f: f.write(bg_music_file.read())
         bg_audio = AudioFileClip(music_path).volumex(2.0)
         bg_audio = afx.audio_loop(bg_audio, duration=final_clip.duration) if bg_audio.duration < final_clip.duration else bg_audio.subclip(0, final_clip.duration)
         final_clip.audio = CompositeAudioClip([final_clip.audio, bg_audio]) if final_clip.audio is not None else bg_audio
 
-    progress_bar.progress(88, text="⚙️ Rendering & Encoding Final Output...")
+    # Video write execution
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
-    progress_bar.progress(100, text="✅ Video Processing Complete!")
+
+    # Merged Timer Loop for Status Text & Progress Bar (0 to 100% with remaining seconds)
+    for i in range(total_seconds + 1):
+        percent = int((i / total_seconds) * 100)
+        remaining = total_seconds - i
+
+        status_text.write(
+            f"⚙️ **Rendering & Encoding Final Output... {percent}% ({remaining}s remaining)**"
+        )
+        progress_bar.progress(percent / 100)
+
+        if i < total_seconds:
+            time.sleep(1)
 
 # -----------------------------------------------------------------------------
 # SIDEBAR CONTROLS (Theme Toggle & User Profile)
@@ -373,15 +378,30 @@ else:
                     if not os.path.exists("exports"): os.makedirs("exports")
 
                     for idx, up_file in enumerate(uploaded_files):
-                        st.subheader(f"🎬 Processing File #{idx+1}: {up_file.name}")
-                        p_bar = st.progress(0, text="Initializing Engine...")
+                        st.write(f"⚙️ **Processing File #{idx+1}: {up_file.name}**")
                         
+                        # Dynamic Status Text and Progress Bar
+                        status_text = st.empty()
+                        progress_bar = st.progress(0)
+
                         temp_in = f"temp_{idx}.mp4"
                         out_path = f"exports/{int(time.time())}_{idx}_{up_file.name}"
                         with open(temp_in, "wb") as f: f.write(up_file.read())
 
                         try:
-                            process_single_video(temp_in, out_path, target_height, bitrate, wm_file, wm_pos, mute_audio, bg_music_file, p_bar)
+                            process_single_video(
+                                temp_in, 
+                                out_path, 
+                                target_height, 
+                                bitrate, 
+                                wm_file, 
+                                wm_pos, 
+                                mute_audio, 
+                                bg_music_file, 
+                                status_text, 
+                                progress_bar,
+                                total_seconds=15
+                            )
                             
                             db_hist = load_db()
                             if current_user not in db_hist["history"]: db_hist["history"][current_user] = []
@@ -398,7 +418,7 @@ else:
                             st.error(f"Error processing {up_file.name}: {str(e)}")
 
                     st.balloons()
-                    st.success("🎉 All videos rendered successfully!")
+                    st.success("✅ Video Rendering Complete!")
                     time.sleep(1)
                     st.rerun()
                 else:
