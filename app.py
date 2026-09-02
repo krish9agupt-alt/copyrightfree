@@ -5,6 +5,7 @@ import os
 import hashlib
 import numpy as np
 import PIL.Image
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
 # CRITICAL FIX FOR MOVIEPY / PIL ANTIALIAS DEPRECATION
@@ -13,11 +14,13 @@ if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
 
 try:
-    from moviepy.editor import VideoFileClip, concatenate_videoclips
+    from moviepy.editor import VideoFileClip, concatenate_videoclips, ImageClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip
     import moviepy.video.fx.all as vfx
+    import moviepy.audio.fx.all as afx
 except ImportError:
-    from moviepy import VideoFileClip, concatenate_videoclips
+    from moviepy import VideoFileClip, concatenate_videoclips, ImageClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip
     import moviepy.video.fx as vfx
+    import moviepy.audio.fx as afx
 
 # -----------------------------------------------------------------------------
 # 1. PAGE CONFIG & THEME STATE
@@ -31,12 +34,6 @@ st.set_page_config(
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
 
-if "processed_video_path" not in st.session_state:
-    st.session_state.processed_video_path = None
-
-if "processed_quality" not in st.session_state:
-    st.session_state.processed_quality = None
-
 def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
@@ -49,28 +46,29 @@ DB_FILE = "database.json"
 
 def load_db():
     if not os.path.exists(DB_FILE):
-        default_db = {"users": {}, "pending_requests": [], "support_tickets": []}
+        default_db = {"users": {}, "pending_requests": [], "support_tickets": [], "history": {}}
         with open(DB_FILE, "w") as f:
             json.dump(default_db, f, indent=4)
         return default_db
     try:
         with open(DB_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            if "history" not in data:
+                data["history"] = {}
+            return data
     except Exception:
-        return {"users": {}, "pending_requests": [], "support_tickets": []}
+        return {"users": {}, "pending_requests": [], "support_tickets": [], "history": {}}
 
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# Dynamic CSS for Dark / Light Theme & Hiding Streamlit Branding
 bg_color = "#0B0C10" if st.session_state.theme == "dark" else "#FFFFFF"
 text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#000000"
 card_bg = "#121212" if st.session_state.theme == "dark" else "#F0F2F5"
 
 st.markdown(f"""
     <style>
-    /* HIDE TOP HEADER, GITHUB, EDIT, AND STAR ICONS */
     #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
@@ -136,13 +134,10 @@ st.markdown(f"""
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
-
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
-
 if "selected_plan" not in st.session_state:
     st.session_state.selected_plan = None
 
@@ -156,7 +151,6 @@ def manual_zoom(clip, zoom_factor):
         top = (h - crop_h) // 2
         left = (w - crop_w) // 2
         cropped = image[top:top+crop_h, left:left+crop_w]
-        
         resizer = PIL.Image.Resampling.LANCZOS if hasattr(PIL.Image, 'Resampling') else PIL.Image.BICUBIC
         img_pil = PIL.Image.fromarray(cropped)
         resized_pil = img_pil.resize((w, h), resizer)
@@ -199,6 +193,80 @@ def apply_custom_effects(clip, edit_num):
 
     return clip
 
+def process_single_video(input_path, output_path, target_height, bitrate, watermark_file, watermark_pos, mute_audio, bg_music_file):
+    video = VideoFileClip(input_path)
+    actual_vid_duration = video.duration
+    orig_w, orig_h = video.size
+    
+    clips = []
+    cut_duration = actual_vid_duration / 15.0
+
+    for edit_idx in range(1, 16):
+        seg_start = (edit_idx - 1) * cut_duration
+        seg_end = edit_idx * cut_duration
+        subclip = video.subclip(seg_start, seg_end)
+        edited_subclip = apply_custom_effects(subclip, edit_idx)
+        clips.append(edited_subclip)
+
+    final_clip = concatenate_videoclips(clips)
+
+    if orig_h != target_height:
+        aspect_ratio = orig_w / float(orig_h)
+        new_w = int(target_height * aspect_ratio)
+        if new_w % 2 != 0:
+            new_w += 1
+        final_clip = final_clip.resize(newsize=(new_w, target_height))
+
+    # Watermark Processing
+    if watermark_file is not None:
+        wm_path = "temp_wm.png"
+        with open(wm_path, "wb") as f:
+            f.write(watermark_file.read())
+        
+        pos_map = {
+            "Top-Left": ("left", "top"),
+            "Top-Right": ("right", "top"),
+            "Bottom-Left": ("left", "bottom"),
+            "Bottom-Right": ("right", "bottom")
+        }
+        logo = (ImageClip(wm_path)
+                .set_duration(final_clip.duration)
+                .resize(height=int(final_clip.h * 0.12))
+                .set_pos(pos_map.get(watermark_pos, ("right", "bottom"))))
+        final_clip = CompositeVideoClip([final_clip, logo])
+
+    # Audio Customization
+    if mute_audio:
+        final_clip = final_clip.without_audio()
+    elif bg_music_file is not None:
+        music_path = "temp_music.mp3"
+        with open(music_path, "wb") as f:
+            f.write(bg_music_file.read())
+        
+        bg_audio = AudioFileClip(music_path)
+        bg_audio = bg_audio.volumex(2.0)  # Volume set to 2.0
+        
+        if bg_audio.duration < final_clip.duration:
+            bg_audio = afx.audio_loop(bg_audio, duration=final_clip.duration)
+        else:
+            bg_audio = bg_audio.subclip(0, final_clip.duration)
+            
+        if final_clip.audio is not None:
+            combined_audio = CompositeAudioClip([final_clip.audio, bg_audio])
+            final_clip.audio = combined_audio
+        else:
+            final_clip.audio = bg_audio
+
+    final_clip.write_videofile(
+        output_path, 
+        codec="libx264", 
+        audio_codec="aac", 
+        bitrate=bitrate,
+        preset="medium",
+        threads=4,
+        logger=None
+    )
+
 # -----------------------------------------------------------------------------
 # 2. HEADER & THEME TOGGLE
 # -----------------------------------------------------------------------------
@@ -229,7 +297,6 @@ with top_col2:
             st.session_state.logged_in = False
             st.session_state.user_email = ""
             st.session_state.is_admin = False
-            st.session_state.processed_video_path = None
             st.rerun()
 
 st.divider()
@@ -248,7 +315,6 @@ if not st.session_state.logged_in:
 
         if submit_button:
             clean_email = email.lower().strip()
-            
             if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
@@ -280,8 +346,8 @@ if not st.session_state.logged_in:
 # -----------------------------------------------------------------------------
 else:
     current_user = st.session_state.user_email
-    
     db_data = load_db()
+    
     if not st.session_state.is_admin:
         if current_user not in db_data["users"]:
             db_data["users"][current_user] = 10
@@ -297,33 +363,35 @@ else:
 
     st.divider()
 
+    tabs_list = ["📹 Sequence Studio", "📜 Download History", "🪙 Scan & Buy Coins", "💬 Help & Support"]
     if st.session_state.is_admin:
-        tab1, tab2, tab3, tab4 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support", "⚙️ Admin Control"])
-    else:
-        tab1, tab2, tab3 = st.tabs(["📹 Sequence Studio", "🪙 Scan & Buy Coins", "💬 Help & Support"])
-
-    with tab1:
-        st.header("📤 15-Edit Sequence Video Processor")
-        st.caption("Standard Cost: Below 50 MB = 🪙 5 Coins | Above 50 MB = 🪙 10 Coins")
+        tabs_list.append("⚙️ Admin Control")
         
-        uploaded_file = st.file_uploader("Choose video file", type=["mp4", "mov", "mkv", "avi"])
+    tabs = st.tabs(tabs_list)
+    
+    tab_studio = tabs[0]
+    tab_history = tabs[1]
+    tab_recharge = tabs[2]
+    tab_support = tabs[3]
+    tab_admin = tabs[4] if st.session_state.is_admin else None
 
-        if uploaded_file is not None:
-            file_size_mb = uploaded_file.size / (1024 * 1024)
-            base_coins = 5 if file_size_mb < 50 else 10
-            
-            input_path = "temp_input.mp4"
-            output_path = "output_edited.mp4"
-            
-            bytes_data = uploaded_file.read()
-            with open(input_path, "wb") as f:
-                f.write(bytes_data)
+    # --- TAB 1: STUDIO (SINGLE & BULK PROCESSING) ---
+    with tab_studio:
+        st.header("📤 15-Edit Sequence Video Processor")
+        
+        proc_mode = st.radio("Choose Processing Mode:", ["Single Video Edit", "Bulk / Batch Editing (2-3 Videos)"])
+        
+        uploaded_files = []
+        if proc_mode == "Single Video Edit":
+            file = st.file_uploader("Choose video file", type=["mp4", "mov", "mkv", "avi"], key="single_up")
+            if file: uploaded_files.append(file)
+        else:
+            files = st.file_uploader("Choose up to 3 videos for Bulk Edit", type=["mp4", "mov", "mkv", "avi"], accept_multiple_files=True, key="bulk_up")
+            if files: uploaded_files = files[:3]
 
-            st.video(uploaded_file)
+        if uploaded_files:
             st.divider()
-
-            st.subheader("⚙️ Select Target Output Quality")
-            
+            st.subheader("⚙️ Output Quality Settings")
             quality_option = st.radio(
                 "Choose Export Quality:",
                 options=["720p (Free)", "1080p Full HD (3 Coins)", "2K Ultra HD (5 Coins)", "4K Ultra HD (10 Coins)"],
@@ -336,17 +404,32 @@ else:
                 "2K Ultra HD (5 Coins)": (1440, 5, "24000k"),
                 "4K Ultra HD (10 Coins)": (2160, 10, "45000k")
             }
-
             target_height, quality_coins, bitrate = resolution_costs[quality_option]
-            total_required_coins = base_coins + quality_coins
 
-            st.info(
-                f"📁 **File Size Cost:** 🪙 {base_coins} Coins\n\n"
-                f"✨ **Quality Add-on:** 🪙 {quality_coins} Coins\n\n"
-                f"🪙 **Total Deductible Coins:** **{total_required_coins} Coins**"
-            )
+            # Calculate Coins
+            total_required_coins = 0
+            for file in uploaded_files:
+                f_size_mb = file.size / (1024 * 1024)
+                base = 5 if f_size_mb < 50 else 10
+                total_required_coins += (base + quality_coins)
 
-            if st.button(f"🚀 Process Video ({total_required_coins} Coins)", type="primary"):
+            st.info(f"🪙 **Total Required Coins for {len(uploaded_files)} Video(s):** **{total_required_coins} Coins**")
+
+            # --- ADVANCED OPTIONS ---
+            st.divider()
+            st.subheader("🎨 Customization & Branding (Optional)")
+            
+            exp_wm = st.expander("🖼️ Add Watermark / Logo Overlay")
+            with exp_wm:
+                wm_file = st.file_uploader("Upload PNG/JPG Logo", type=["png", "jpg", "jpeg"], key="wm_file")
+                wm_pos = st.selectbox("Logo Position", ["Bottom-Right", "Bottom-Left", "Top-Right", "Top-Left"])
+
+            exp_audio = st.expander("🎵 Audio Replacement & Background Music")
+            with exp_audio:
+                mute_audio = st.checkbox("Mute Original Video Sound")
+                bg_music_file = st.file_uploader("Add Non-Copyright Music (Volume set to 2.0)", type=["mp3", "wav"], key="music_file")
+
+            if st.button(f"🚀 Process {len(uploaded_files)} Video(s) ({total_required_coins} Coins)", type="primary"):
                 fresh_db = load_db()
                 current_balance = fresh_db["users"].get(current_user, 0)
 
@@ -354,90 +437,77 @@ else:
                     fresh_db["users"][current_user] -= total_required_coins
                     save_db(fresh_db)
                     
-                    process_bar = st.progress(0, text="⚙️ AI Editing Engine Initializing...")
-                    status_box = st.empty()
+                    if not os.path.exists("exports"):
+                        os.makedirs("exports")
 
-                    try:
-                        video = VideoFileClip(input_path)
-                        actual_vid_duration = video.duration
-                        orig_w, orig_h = video.size
+                    for idx, up_file in enumerate(uploaded_files):
+                        st.subheader(f"Processing Video {idx+1}/{len(uploaded_files)}: {up_file.name}")
+                        p_bar = st.progress(0, text="Initializing Engine...")
                         
-                        clips = []
-                        total_expected_cuts = 15
-                        cut_duration = actual_vid_duration / 15.0
+                        temp_in = f"temp_in_{idx}.mp4"
+                        out_filename = f"exports/{int(time.time())}_{idx}_{up_file.name}"
+                        
+                        with open(temp_in, "wb") as f:
+                            f.write(up_file.read())
 
-                        for edit_idx in range(1, 16):
-                            seg_start = (edit_idx - 1) * cut_duration
-                            seg_end = edit_idx * cut_duration
-                            
-                            subclip = video.subclip(seg_start, seg_end)
-                            edited_subclip = apply_custom_effects(subclip, edit_idx)
-                            clips.append(edited_subclip)
-
-                            prog_percentage = int((edit_idx / total_expected_cuts) * 85)
-                            dots = "." * (((edit_idx - 1) % 3) + 1)
-                            
-                            process_bar.progress(
-                                prog_percentage, 
-                                text=f"⚙️ AI Editing Engine Processing Step {edit_idx}/15{dots} ({prog_percentage}%)"
+                        p_bar.progress(30, text="Applying 15-Edit Dynamic Sequence...")
+                        
+                        try:
+                            process_single_video(
+                                temp_in, out_filename, target_height, bitrate,
+                                wm_file, wm_pos, mute_audio, bg_music_file
                             )
+                            p_bar.progress(100, text="Complete!")
+                            
+                            # Save to History Database
+                            fresh_db = load_db()
+                            if current_user not in fresh_db["history"]:
+                                fresh_db["history"][current_user] = []
+                            
+                            fresh_db["history"][current_user].append({
+                                "filename": up_file.name,
+                                "path": out_filename,
+                                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "quality": quality_option.split()[0],
+                                "coins": (5 if (up_file.size / (1024*1024)) < 50 else 10) + quality_coins
+                            })
+                            save_db(fresh_db)
+                            
+                        except Exception as e:
+                            st.error(f"Error processing {up_file.name}: {str(e)}")
 
-                        status_box.info("⚙️ Upscaling & Injecting Ultra High Bitrate HD Profile...")
-                        process_bar.progress(92, text="⚙️ AI Editing Engine Finalizing Video... (92%)")
-                        
-                        final_clip = concatenate_videoclips(clips)
-
-                        if orig_h != target_height:
-                            aspect_ratio = orig_w / float(orig_h)
-                            new_w = int(target_height * aspect_ratio)
-                            if new_w % 2 != 0:
-                                new_w += 1
-                            final_clip = final_clip.resize(newsize=(new_w, target_height))
-
-                        final_clip.write_videofile(
-                            output_path, 
-                            codec="libx264", 
-                            audio_codec="aac", 
-                            bitrate=bitrate,
-                            preset="medium",
-                            threads=4,
-                            logger=None
-                        )
-                        
-                        process_bar.progress(100, text="✅ AI Editing Engine Processing Complete! (100%)")
-                        status_box.empty()
-                        
-                        # Save State to Keep Download Button Visible
-                        st.session_state.processed_video_path = output_path
-                        st.session_state.processed_quality = quality_option.split()[0]
-                        st.balloons()
-
-                    except Exception as e:
-                        fresh_db = load_db()
-                        fresh_db["users"][current_user] += total_required_coins
-                        save_db(fresh_db)
-                        st.error(f"❌ Video Processing Error: {str(e)}. Coins have been refunded.")
+                    st.balloons()
+                    st.success("🎉 All videos processed successfully! Check 'Download History' tab.")
                 else:
-                    st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {current_balance} Coins.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins.")
 
-        # DISPLAY PERSISTENT DOWNLOAD SECTION IF VIDEO IS PROCESSED
-        if st.session_state.processed_video_path and os.path.exists(st.session_state.processed_video_path):
-            st.divider()
-            st.subheader("📥 Download Ready Video")
-            st.video(st.session_state.processed_video_path)
-            
-            with open(st.session_state.processed_video_path, "rb") as file:
-                st.download_button(
-                    label=f"📥 Download Processed Video ({st.session_state.processed_quality})",
-                    data=file,
-                    file_name=f"processed_{st.session_state.processed_quality}_video.mp4",
-                    mime="video/mp4",
-                    type="primary",
-                    key="persistent_download_btn"
-                )
+    # --- TAB 2: DOWNLOAD HISTORY ---
+    with tab_history:
+        st.header("📜 Download & Processed Video History")
+        user_history = db_data.get("history", {}).get(current_user, [])
 
-    # --- TAB 2: RECHARGE ---
-    with tab2:
+        if not user_history:
+            st.info("No processed video history found.")
+        else:
+            for item in reversed(user_history):
+                st.write(f"📹 **File:** `{item['filename']}`")
+                st.caption(f"🗓️ Date: {item['date']} | ✨ Quality: {item['quality']} | 🪙 Cost: {item['coins']} Coins")
+                
+                if os.path.exists(item['path']):
+                    with open(item['path'], "rb") as f:
+                        st.download_button(
+                            label=f"📥 Download Video ({item['quality']})",
+                            data=f,
+                            file_name=f"processed_{item['filename']}",
+                            mime="video/mp4",
+                            key=f"hist_btn_{item['path']}"
+                        )
+                else:
+                    st.warning("⚠️ File no longer available on server.")
+                st.divider()
+
+    # --- TAB 3: RECHARGE ---
+    with tab_recharge:
         st.header("⚡ Request Coins Recharge")
         st.write("Select a package, scan QR code, and submit UTR for admin verification.")
 
@@ -446,30 +516,25 @@ else:
 
         with plan_col1:
             st.markdown("<div class='plan-card'><h3>Starter</h3><h2>₹49</h2><p>🪙 50 Coins</p></div>", unsafe_allow_html=True)
-            if st.button("Buy ₹49 Plan", key="p1"):
-                st.session_state.selected_plan = ("Starter", 49, 50)
+            if st.button("Buy ₹49 Plan", key="p1"): st.session_state.selected_plan = ("Starter", 49, 50)
 
         with plan_col2:
             st.markdown("<div class='plan-card'><h3>Popular</h3><h2>₹99</h2><p>🪙 110 Coins</p></div>", unsafe_allow_html=True)
-            if st.button("Buy ₹99 Plan", key="p2"):
-                st.session_state.selected_plan = ("Popular", 99, 110)
+            if st.button("Buy ₹99 Plan", key="p2"): st.session_state.selected_plan = ("Popular", 99, 110)
 
         with plan_col3:
             st.markdown("<div class='plan-card'><h3>Value</h3><h2>₹199</h2><p>🪙 221 Coins</p></div>", unsafe_allow_html=True)
-            if st.button("Buy ₹199 Plan", key="p3"):
-                st.session_state.selected_plan = ("Value", 199, 221)
+            if st.button("Buy ₹199 Plan", key="p3"): st.session_state.selected_plan = ("Value", 199, 221)
 
         with plan_col4:
             st.markdown("<div class='plan-card'><h3>Mega Pro</h3><h2>₹399</h2><p>🪙 500 Coins</p></div>", unsafe_allow_html=True)
-            if st.button("Buy ₹399 Plan", key="p4"):
-                st.session_state.selected_plan = ("Mega Pro", 399, 500)
+            if st.button("Buy ₹399 Plan", key="p4"): st.session_state.selected_plan = ("Mega Pro", 399, 500)
 
         st.divider()
 
         if st.session_state.selected_plan:
             plan_name, amount, coins_to_add = st.session_state.selected_plan
             st.subheader(f"📲 Scan QR & Submit UTR for ₹{amount} ({coins_to_add} Coins)")
-            
             pay_col1, pay_col2 = st.columns([1, 1])
 
             with pay_col1:
@@ -482,23 +547,19 @@ else:
                     if len(utr_number) == 12 and utr_number.isdigit():
                         current_db = load_db()
                         current_db["pending_requests"].append({
-                            "user": current_user,
-                            "utr": utr_number,
-                            "amount": amount,
-                            "coins": coins_to_add
+                            "user": current_user, "utr": utr_number, "amount": amount, "coins": coins_to_add
                         })
                         save_db(current_db)
                         st.session_state.selected_plan = None
-                        st.success("⏳ UTR Submitted Successfully! Admin can now approve it.")
+                        st.success("⏳ UTR Submitted Successfully!")
                         time.sleep(1)
                         st.rerun()
                     else:
                         st.error("Please enter a valid 12-digit numeric UTR Number.")
 
-    # --- TAB 3: PRIVATE CHATS ---
-    with tab3:
+    # --- TAB 4: SUPPORT CHAT ---
+    with tab_support:
         st.header("💬 Help & Support")
-        
         with st.form("support_form", clear_on_submit=True):
             user_msg = st.text_area("Your Message / Query", placeholder="Describe your problem or question here...")
             sub_ticket = st.form_submit_button("📩 Send Message")
@@ -506,11 +567,7 @@ else:
                 current_db = load_db()
                 ticket_id = f"TICK_{int(time.time()*1000)}"
                 current_db["support_tickets"].append({
-                    "ticket_id": ticket_id,
-                    "user": current_user,
-                    "message": user_msg.strip(),
-                    "reply": "",
-                    "status": "Pending"
+                    "ticket_id": ticket_id, "user": current_user, "message": user_msg.strip(), "reply": "", "status": "Pending"
                 })
                 save_db(current_db)
                 st.success("Message sent to Admin!")
@@ -519,7 +576,6 @@ else:
 
         st.divider()
         st.subheader("📋 Your Private Chats")
-        
         current_db = load_db()
         user_tickets = [t for t in current_db.get("support_tickets", []) if t.get("user") == current_user]
         
@@ -528,21 +584,17 @@ else:
         else:
             for t in reversed(user_tickets):
                 st.write(f"**You:** {t['message']}")
-                if t.get("reply"):
-                    st.success(f"**Admin Reply:** {t['reply']}")
-                else:
-                    st.warning("⏳ Waiting for Admin reply...")
+                if t.get("reply"): st.success(f"**Admin Reply:** {t['reply']}")
+                else: st.warning("⏳ Waiting for Admin reply...")
                 st.caption(f"Status: `{t.get('status', 'Pending')}`")
                 st.divider()
 
-    # --- TAB 4: ADMIN CONTROL PANEL ---
-    if st.session_state.is_admin:
-        with tab4:
+    # --- TAB 5: ADMIN PANEL ---
+    if st.session_state.is_admin and tab_admin:
+        with tab_admin:
             st.header("⚙️ Admin Dashboard & Control")
-            
             admin_db = load_db()
             
-            # --- PAYMENT APPROVAL SECTION ---
             st.subheader("💳 Pending Payment Approvals")
             pending_requests = admin_db.get("pending_requests", [])
 
@@ -552,7 +604,6 @@ else:
                 for idx, req in enumerate(list(pending_requests)):
                     st.warning(f"👤 **User:** `{req['user']}` | 💰 **Amount:** ₹{req['amount']} | 🔢 **UTR:** `{req['utr']}` | 🪙 **Coins:** {req['coins']}")
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         if st.button(f"✅ Approve ({req['coins']} Coins)", key=f"app_btn_{idx}"):
                             db_to_update = load_db()
@@ -570,30 +621,6 @@ else:
                             db_to_update["pending_requests"].pop(idx)
                             save_db(db_to_update)
                             st.error("Request rejected.")
-                            time.sleep(0.5)
-                            st.rerun()
-                    st.divider()
-
-            # --- USER SUPPORT CHAT SECTION ---
-            st.subheader("💬 All User Support Tickets")
-            all_tickets = admin_db.get("support_tickets", [])
-
-            if not all_tickets:
-                st.info("No user tickets found.")
-            else:
-                for idx, t in enumerate(list(all_tickets)):
-                    st.info(f"👤 **User:** `{t['user']}`\n\n💬 **Message:** {t['message']}")
-                    
-                    existing_reply = t.get("reply", "")
-                    reply_input = st.text_input(f"Reply to {t['user']}", value=existing_reply, key=f"admin_reply_{idx}")
-                    
-                    if st.button(f"📩 Send Reply to {t['user']}", key=f"reply_btn_{idx}"):
-                        if reply_input.strip():
-                            db_to_update = load_db()
-                            db_to_update["support_tickets"][idx]["reply"] = reply_input.strip()
-                            db_to_update["support_tickets"][idx]["status"] = "Resolved"
-                            save_db(db_to_update)
-                            st.success("Reply sent successfully!")
                             time.sleep(0.5)
                             st.rerun()
                     st.divider()
