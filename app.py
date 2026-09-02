@@ -26,7 +26,7 @@ except ImportError:
 # App Setup & Configuration
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="No Copyright Ai Engine", 
+    page_title="No Copyright Video Studio", 
     page_icon="🎬", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -214,7 +214,18 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         logo = (ImageClip(wm_path).set_duration(final_clip.duration).resize(height=int(final_clip.h * 0.12)).set_pos(pos_map.get(watermark_pos, ("right", "bottom"))))
         final_clip = CompositeVideoClip([final_clip, logo])
 
-       progress_bar.progress(88, text="⚙️ Rendering & Encoding Final Output...")
+    if mute_audio:
+        progress_bar.progress(80, text="🔇 Muting Original Audio...")
+        final_clip = final_clip.without_audio()
+    elif bg_music_file is not None:
+        progress_bar.progress(80, text="🎵 Mixing Non-Copyright Music (Vol 2.0)...")
+        music_path = "temp_music.mp3"
+        with open(music_path, "wb") as f: f.write(bg_music_file.read())
+        bg_audio = AudioFileClip(music_path).volumex(2.0)
+        bg_audio = afx.audio_loop(bg_audio, duration=final_clip.duration) if bg_audio.duration < final_clip.duration else bg_audio.subclip(0, final_clip.duration)
+        final_clip.audio = CompositeAudioClip([final_clip.audio, bg_audio]) if final_clip.audio is not None else bg_audio
+
+    progress_bar.progress(88, text="⚙️ Rendering & Encoding Final Output...")
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
     progress_bar.progress(100, text="✅ Video Processing Complete!")
 
@@ -251,7 +262,7 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 # DASHBOARD UI
 # -----------------------------------------------------------------------------
-st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT Ai MALTi ENGINE </h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
     st.subheader("🔑 Sign In to Studio Account")
@@ -416,7 +427,7 @@ else:
     # TAB 3: SCAN & BUY COINS
     with tabs[2]:
         st.header("🪙 Buy Coins via UPI QR Code")
-        plans = [("Starter Pack", 49, 69), ("Popular Pack", 99, 129), ("Value Pack", 199, 239), ("Mega Pro Pack", 399, 449)]
+        plans = [("Starter Pack", 49, 50), ("Popular Pack", 99, 110), ("Value Pack", 199, 221), ("Mega Pro Pack", 399, 500)]
         cols = st.columns(2)
         for idx, (pname, amt, c_val) in enumerate(plans):
             with cols[idx % 2]:
