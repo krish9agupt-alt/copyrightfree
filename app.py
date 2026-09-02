@@ -91,35 +91,58 @@ if "is_admin" not in st.session_state:
 if "selected_plan" not in st.session_state: 
     st.session_state.selected_plan = None
 
-# Custom CSS Theme Dynamics
-bg_color = "#0B0C10" if st.session_state.theme == "dark" else "#FFFFFF"
-text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#000000"
-card_bg = "#121212" if st.session_state.theme == "dark" else "#F0F2F5"
-sidebar_bg = "#1F2833" if st.session_state.theme == "dark" else "#E3E6E8"
+# Custom CSS with Wallpaper & Hidden Top Icons
+WALLPAPER_URL = "https://i.ibb.co/3ykXgY8/doodle-bg.jpg"
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-    [data-testid="stSidebar"] {{ background-color: {sidebar_bg}; }}
+    /* Hide Streamlit Header, Toolbar, Footer & 3 Top Icons */
+    #MainMenu {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    [data-testid="stHeader"] {{display: none !important;}}
+    [data-testid="stToolbar"] {{display: none !important;}}
+    .stAppToolbar {{display: none !important;}}
+
+    /* Full Background Wallpaper with Dark Overlay for Text Visibility */
+    .stApp {{ 
+        background: linear-gradient(rgba(11, 12, 16, 0.82), rgba(11, 12, 16, 0.82)), 
+                    url('https://img.freepik.com/free-vector/hand-drawn-no-copyright-doodles_23-2150385966.jpg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: #FFFFFF;
+    }}
+    
+    [data-testid="stSidebar"] {{ 
+        background-color: rgba(31, 40, 51, 0.95); 
+    }}
+    
+    /* Make Input Text Labels Bright White & Bold */
+    label, div[data-aria-hidden="true"], .stWidgetLabel p {{
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 1.05rem !important;
+    }}
+    
     .main-header {{
         text-align: center; font-weight: 900; font-size: 2.5rem;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         margin-bottom: 20px;
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
     }}
+    
     .plan-card {{
-        background: {card_bg}; border: 2px solid #FFD700; border-radius: 15px;
+        background: rgba(18, 18, 18, 0.9); border: 2px solid #FFD700; border-radius: 15px;
         padding: 1.5rem; text-align: center; margin-bottom: 1rem;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }}
+    
     .stButton>button {{
         width: 100%; border-radius: 10px; height: 3em;
         background: linear-gradient(90deg, #FFD700, #FF69B4); 
         color: #000; font-weight: bold; border: none;
-    }}
-    .status-badge {{
-        background-color: #4CAF50; color: white; padding: 4px 8px;
-        border-radius: 5px; font-weight: bold;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -214,7 +237,6 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
 with st.sidebar:
     st.title("⚙️ Studio Settings")
     
-    # Theme Switcher (Day / Night Toggle)
     st.subheader("🎨 Appearance Mode")
     theme_choice = st.radio("Select Theme:", ["🌙 Dark Mode", "☀️ Light Mode"], index=0 if st.session_state.theme == "dark" else 1)
     new_theme = "dark" if "Dark" in theme_choice else "light"
@@ -248,7 +270,6 @@ if not st.session_state.logged_in:
     st.subheader("🔑 Sign In to Studio Account")
     with st.form("login_form"):
         email = st.text_input("Enter Email Address")
-        # Access Passcode is AUTO-FILLED with default '123456'
         passcode = st.text_input("Access Passcode", value=USER_PASSCODE, type="password")
         submit_btn = st.form_submit_button("🚀 Enter Studio Dashboard")
         
@@ -261,7 +282,6 @@ if not st.session_state.logged_in:
                 st.rerun()
             elif clean_email and (passcode == USER_PASSCODE or hash_text(passcode) == ADMIN_PASSCODE_HASH):
                 db = load_db()
-                # Strict Balance Check: नए यूजर को 10 कॉइन्स, पुराने यूजर का बचा बैलेंस दर्ज रहेगा
                 if clean_email not in db["users"]:
                     db["users"][clean_email] = 10
                     save_db(db)
@@ -276,7 +296,6 @@ else:
     current_user = st.session_state.user_email
     db_data = load_db()
     
-    # Load Real Balance
     if not st.session_state.is_admin:
         if current_user not in db_data["users"]:
             db_data["users"][current_user] = 10
@@ -285,7 +304,6 @@ else:
     else:
         user_coins = 99999
 
-    # Metric Bar
     m1, m2, m3 = st.columns(3)
     m1.metric("Available Coins", f"🪙 {user_coins}")
     m2.metric("Account Plan", "PRO Unlocked")
@@ -293,16 +311,13 @@ else:
 
     st.divider()
 
-    # Dynamic Navigation Tabs
     tabs_list = ["📹 Dynamic Sequence Studio", "📜 Download History", "🪙 Scan & Recharge Coins", "💬 Help & Support"]
     if st.session_state.is_admin:
         tabs_list.append("⚙️ Admin Control Panel")
     
     tabs = st.tabs(tabs_list)
 
-    # -------------------------------------------------------------------------
     # TAB 1: SEQUENCE VIDEO STUDIO
-    # -------------------------------------------------------------------------
     with tabs[0]:
         st.header("📤 15-Edit Sequence Video Processor")
         proc_mode = st.radio("Choose Mode:", ["Single Video Processing", "Bulk Batch Processing (2-3 Videos)"])
@@ -327,7 +342,6 @@ else:
             }
             target_height, quality_coins, bitrate = res_map[quality_option]
 
-            # Calculate Exact Coin Costs
             total_required_coins = 0
             for file in uploaded_files:
                 base = 5 if (file.size / (1024 * 1024)) < 50 else 10
@@ -356,7 +370,7 @@ else:
                     if not st.session_state.is_admin:
                         fresh_db["users"][current_user] -= total_required_coins
                         save_db(fresh_db)
-                        st.toast(f"🪙 {total_required_coins} Coins Deducted! Balance: {fresh_db['users'][current_user]}", icon="💸")
+                        st.toast(f"🪙 {total_required_coins} Coins Deducted!", icon="💸")
 
                     if not os.path.exists("exports"): os.makedirs("exports")
 
@@ -392,9 +406,7 @@ else:
                 else:
                     st.error(f"❌ Insufficient Balance! You need {total_required_coins} Coins.")
 
-    # -------------------------------------------------------------------------
     # TAB 2: DOWNLOAD HISTORY
-    # -------------------------------------------------------------------------
     with tabs[1]:
         st.header("📜 Exported Videos History")
         user_history = db_data.get("history", {}).get(current_user, [])
@@ -414,9 +426,7 @@ else:
                         st.warning("File expired")
                 st.divider()
 
-    # -------------------------------------------------------------------------
     # TAB 3: SCAN & BUY COINS
-    # -------------------------------------------------------------------------
     with tabs[2]:
         st.header("🪙 Buy Coins via UPI QR Code")
         plans = [("Starter Pack", 49, 50), ("Popular Pack", 99, 110), ("Value Pack", 199, 221), ("Mega Pro Pack", 399, 500)]
@@ -446,14 +456,12 @@ else:
                     db_u = load_db()
                     db_u["pending_requests"].append({"user": current_user, "utr": utr, "amount": amt, "coins": c_val})
                     save_db(db_u)
-                    st.success("✅ Payment Details Submitted! Admin will verify and credit coins soon.")
+                    st.success("✅ Payment Details Submitted! Admin will verify soon.")
                     st.session_state.selected_plan = None
                 else:
                     st.error("❌ Invalid UTR Number! Must be 12 digits.")
 
-    # -------------------------------------------------------------------------
     # TAB 4: HELP & SUPPORT
-    # -------------------------------------------------------------------------
     with tabs[3]:
         st.header("💬 Help & Support Helpdesk")
         with st.form("sup_form", clear_on_submit=True):
@@ -479,9 +487,7 @@ else:
                     st.warning("Status: Pending Admin Reply...")
                 st.divider()
 
-    # -------------------------------------------------------------------------
-    # TAB 5: ADMIN CONTROL PANEL (ONLY FOR ADMIN)
-    # -------------------------------------------------------------------------
+    # TAB 5: ADMIN CONTROL PANEL
     if st.session_state.is_admin and len(tabs) > 4:
         with tabs[4]:
             st.header("⚙️ Admin Dashboard Control")
