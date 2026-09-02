@@ -4,8 +4,14 @@ import json
 import os
 import hashlib
 import numpy as np
+import PIL.Image
 
-# Safe Imports for MoviePy
+# -----------------------------------------------------------------------------
+# CRITICAL FIX FOR MOVIEPY / PIL ANTIALIAS DEPRECATION
+# -----------------------------------------------------------------------------
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
+
 try:
     from moviepy.editor import VideoFileClip, concatenate_videoclips
     import moviepy.video.fx.all as vfx
@@ -32,7 +38,6 @@ USER_PASSCODE = "123456"
 UPI_ID = "cinepoliis@ibl"
 DB_FILE = "database.json"
 
-# Strict Real-time Database Engine
 def load_db():
     if not os.path.exists(DB_FILE):
         default_db = {"users": {}, "pending_requests": [], "support_tickets": []}
@@ -121,7 +126,7 @@ if "selected_plan" not in st.session_state:
     st.session_state.selected_plan = None
 
 # -----------------------------------------------------------------------------
-# MOVIEPY VIDEO & AUDIO TRANSFORMATION FUNCTIONS
+# MOVIEPY TRANSFORMATION LOGIC
 # -----------------------------------------------------------------------------
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
@@ -130,9 +135,12 @@ def manual_zoom(clip, zoom_factor):
         top = (h - crop_h) // 2
         left = (w - crop_w) // 2
         cropped = image[top:top+crop_h, left:left+crop_w]
-        row_indices = (np.linspace(0, crop_h - 1, h)).astype(int)
-        col_indices = (np.linspace(0, crop_w - 1, w)).astype(int)
-        return cropped[row_indices[:, None], col_indices]
+        
+        # High-Quality Resampling Patch
+        resizer = PIL.Image.Resampling.LANCZOS if hasattr(PIL.Image, 'Resampling') else PIL.Image.BICUBIC
+        img_pil = PIL.Image.fromarray(cropped)
+        resized_pil = img_pil.resize((w, h), resizer)
+        return np.array(resized_pil)
     return clip.fl_image(zoom_frame)
 
 def apply_custom_effects(clip, edit_num):
@@ -197,7 +205,7 @@ with top_col2:
 st.divider()
 
 # -----------------------------------------------------------------------------
-# 3. LOGIN & ACCOUNT REGISTRATION
+# 3. LOGIN & REGISTRATION
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in:
     st.subheader("🔑 Access Dashboard")
@@ -220,7 +228,6 @@ if not st.session_state.logged_in:
                 st.rerun()
             elif clean_email and passcode == USER_PASSCODE:
                 db_data = load_db()
-                # STRICT FIX: Exact 10 Bonus Coins for new user signup
                 if clean_email not in db_data["users"]:
                     db_data["users"][clean_email] = 10
                     save_db(db_data)
@@ -293,11 +300,12 @@ else:
                 index=0
             )
 
+            # High Bitrate & Resolution Mapping
             resolution_costs = {
-                "720p (Free)": (720, 0, "1500k"),
-                "1080p Full HD (3 Coins)": (1080, 3, "3000k"),
-                "2K Ultra HD (5 Coins)": (1440, 5, "6000k"),
-                "4K Ultra HD (10 Coins)": (2160, 10, "12000k")
+                "720p (Free)": (720, 0, "4000k"),
+                "1080p Full HD (3 Coins)": (1080, 3, "12000k"),
+                "2K Ultra HD (5 Coins)": (1440, 5, "24000k"),
+                "4K Ultra HD (10 Coins)": (2160, 10, "45000k")
             }
 
             target_height, quality_coins, bitrate = resolution_costs[quality_option]
@@ -345,11 +353,12 @@ else:
                                 text=f"⚙️ AI Editing Engine Processing Step {edit_idx}/15{dots} ({prog_percentage}%)"
                             )
 
-                        status_box.info("⚙️ Finalizing Aspect Ratio & Resolution Upscaling...")
+                        status_box.info("⚙️ Upscaling & Injecting Ultra High Bitrate HD Profile...")
                         process_bar.progress(92, text="⚙️ AI Editing Engine Finalizing Video... (92%)")
                         
                         final_clip = concatenate_videoclips(clips)
 
+                        # Resolution Fix without PIL Error
                         if orig_h != target_height:
                             aspect_ratio = orig_w / float(orig_h)
                             new_w = int(target_height * aspect_ratio)
@@ -357,11 +366,14 @@ else:
                                 new_w += 1
                             final_clip = final_clip.resize(newsize=(new_w, target_height))
 
+                        # Render with Ultra High Bitrate for Real 4K/2K/1080p Enhancement
                         final_clip.write_videofile(
                             output_path, 
                             codec="libx264", 
                             audio_codec="aac", 
-                            bitrate=bitrate, 
+                            bitrate=bitrate,
+                            preset="medium",
+                            fft_options={"threads": 4},
                             logger=None
                         )
                         
@@ -393,7 +405,7 @@ else:
                 else:
                     st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {current_balance} Coins.")
 
-    # --- TAB 2: SCAN & BUY COINS ---
+    # --- TAB 2: RECHARGE ---
     with tab2:
         st.header("⚡ Request Coins Recharge")
         st.write("Select a package, scan QR code, and submit UTR for admin verification.")
@@ -437,7 +449,6 @@ else:
                 utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.", max_chars=12)
                 if st.button("SUBMIT FOR VERIFICATION", type="primary"):
                     if len(utr_number) == 12 and utr_number.isdigit():
-                        # STRICT FIX: Read fresh DB and write back payment immediately
                         current_db = load_db()
                         current_db["pending_requests"].append({
                             "user": current_user,
@@ -453,7 +464,7 @@ else:
                     else:
                         st.error("Please enter a valid 12-digit numeric UTR Number.")
 
-    # --- TAB 3: PRIVATE HELP & SUPPORT ---
+    # --- TAB 3: PRIVATE CHATS ---
     with tab3:
         st.header("💬 Help & Support")
         
@@ -479,7 +490,6 @@ else:
         st.subheader("📋 Your Private Chats")
         
         current_db = load_db()
-        # STRICT FIX: Filter by current_user ONLY
         user_tickets = [t for t in current_db.get("support_tickets", []) if t.get("user") == current_user]
         
         if not user_tickets:
@@ -499,7 +509,6 @@ else:
         with tab4:
             st.header("⚙️ Admin Dashboard & Control")
             
-            # Real-time Load
             admin_db = load_db()
             
             # --- PAYMENT APPROVAL SECTION ---
