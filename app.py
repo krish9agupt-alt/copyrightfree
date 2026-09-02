@@ -8,7 +8,7 @@ import PIL.Image
 from datetime import datetime
 
 # -----------------------------------------------------------------------------
-# MoviePy / PIL Antialias Fix
+# MoviePy / PIL Antialias Compatibility Fix
 # -----------------------------------------------------------------------------
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
@@ -23,12 +23,13 @@ except ImportError:
     import moviepy.audio.fx as afx
 
 # -----------------------------------------------------------------------------
-# Setup & Database Configuration
+# App Setup & Configuration
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="No Copyright Video Studio", 
     page_icon="🎬", 
-    layout="centered"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 DB_FILE = "database.json"
@@ -41,9 +42,17 @@ ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 UPI_ID = "cinepoliis@ibl"
 
+# -----------------------------------------------------------------------------
+# Safe Database Operations
+# -----------------------------------------------------------------------------
 def load_db():
     if not os.path.exists(DB_FILE):
-        default_db = {"users": {}, "pending_requests": [], "support_tickets": [], "history": {}}
+        default_db = {
+            "users": {},
+            "pending_requests": [],
+            "support_tickets": [],
+            "history": {}
+        }
         with open(DB_FILE, "w") as f:
             json.dump(default_db, f, indent=4)
         return default_db
@@ -58,51 +67,65 @@ def load_db():
     except Exception:
         return {"users": {}, "pending_requests": [], "support_tickets": [], "history": {}}
 
-# Safe JSON Save Mechanism (Force Flush & OS Sync)
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
         f.flush()
         os.fsync(f.fileno())
 
+# -----------------------------------------------------------------------------
+# Theme & State Management
+# -----------------------------------------------------------------------------
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
 
+if "logged_in" not in st.session_state: 
+    st.session_state.logged_in = False
+    
+if "user_email" not in st.session_state: 
+    st.session_state.user_email = ""
+    
+if "is_admin" not in st.session_state: 
+    st.session_state.is_admin = False
+    
+if "selected_plan" not in st.session_state: 
+    st.session_state.selected_plan = None
+
+# Custom CSS Theme Dynamics
 bg_color = "#0B0C10" if st.session_state.theme == "dark" else "#FFFFFF"
 text_color = "#FFFFFF" if st.session_state.theme == "dark" else "#000000"
 card_bg = "#121212" if st.session_state.theme == "dark" else "#F0F2F5"
+sidebar_bg = "#1F2833" if st.session_state.theme == "dark" else "#E3E6E8"
 
 st.markdown(f"""
     <style>
-    #MainMenu {{visibility: hidden;}}
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    [data-testid="stHeader"] {{display: none;}}
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-    [data-testid="stSidebar"] {{ display: none; }}
+    [data-testid="stSidebar"] {{ background-color: {sidebar_bg}; }}
     .main-header {{
-        text-align: center; font-weight: 900;
+        text-align: center; font-weight: 900; font-size: 2.5rem;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin-bottom: 20px;
     }}
     .plan-card {{
         background: {card_bg}; border: 2px solid #FFD700; border-radius: 15px;
-        padding: 1rem; text-align: center; margin-bottom: 1rem;
+        padding: 1.5rem; text-align: center; margin-bottom: 1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }}
     .stButton>button {{
         width: 100%; border-radius: 10px; height: 3em;
-        background: linear-gradient(90deg, #FFD700, #FF69B4); color: #000; font-weight: bold; border: none;
+        background: linear-gradient(90deg, #FFD700, #FF69B4); 
+        color: #000; font-weight: bold; border: none;
+    }}
+    .status-badge {{
+        background-color: #4CAF50; color: white; padding: 4px 8px;
+        border-radius: 5px; font-weight: bold;
     }}
     </style>
 """, unsafe_allow_html=True)
 
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "user_email" not in st.session_state: st.session_state.user_email = ""
-if "is_admin" not in st.session_state: st.session_state.is_admin = False
-if "selected_plan" not in st.session_state: st.session_state.selected_plan = None
-
 # -----------------------------------------------------------------------------
-# Video Engine Logic
+# Video Editing Processing Functions
 # -----------------------------------------------------------------------------
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
@@ -162,7 +185,6 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-    # Watermark Processing
     if watermark_file is not None:
         progress_bar.progress(72, text="🖼️ Adding Custom Logo Overlay...")
         wm_path = "temp_wm.png"
@@ -171,7 +193,6 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         logo = (ImageClip(wm_path).set_duration(final_clip.duration).resize(height=int(final_clip.h * 0.12)).set_pos(pos_map.get(watermark_pos, ("right", "bottom"))))
         final_clip = CompositeVideoClip([final_clip, logo])
 
-    # Audio Customization
     if mute_audio:
         progress_bar.progress(80, text="🔇 Muting Original Audio...")
         final_clip = final_clip.without_audio()
@@ -188,35 +209,74 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
     progress_bar.progress(100, text="✅ Video Processing Complete!")
 
 # -----------------------------------------------------------------------------
-# Dashboard UI
+# SIDEBAR CONTROLS (Theme Toggle & User Profile)
 # -----------------------------------------------------------------------------
-st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO</h1>", unsafe_allow_html=True)
+with st.sidebar:
+    st.title("⚙️ Studio Settings")
+    
+    # Theme Switcher (Day / Night Toggle)
+    st.subheader("🎨 Appearance Mode")
+    theme_choice = st.radio("Select Theme:", ["🌙 Dark Mode", "☀️ Light Mode"], index=0 if st.session_state.theme == "dark" else 1)
+    new_theme = "dark" if "Dark" in theme_choice else "light"
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
+
+    st.divider()
+
+    if st.session_state.logged_in:
+        st.subheader("👤 Account Info")
+        st.write(f"**Email:** `{st.session_state.user_email}`")
+        if st.session_state.is_admin:
+            st.markdown("👑 **Role:** `Administrator`")
+        else:
+            st.markdown("⭐ **Role:** `Pro User`")
+        
+        st.divider()
+        if st.button("🚪 Log Out"):
+            st.session_state.logged_in = False
+            st.session_state.user_email = ""
+            st.session_state.is_admin = False
+            st.rerun()
+
+# -----------------------------------------------------------------------------
+# DASHBOARD UI
+# -----------------------------------------------------------------------------
+st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
-    st.subheader("🔑 Access Dashboard")
+    st.subheader("🔑 Sign In to Studio Account")
     with st.form("login_form"):
-        email = st.text_input("Email Address")
-        passcode = st.text_input("Access Passcode", type="password")
-        if st.form_submit_button("🚀 Enter Studio"):
+        email = st.text_input("Enter Email Address")
+        # Access Passcode is AUTO-FILLED with default '123456'
+        passcode = st.text_input("Access Passcode", value=USER_PASSCODE, type="password")
+        submit_btn = st.form_submit_button("🚀 Enter Studio Dashboard")
+        
+        if submit_btn:
             clean_email = email.lower().strip()
             if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
-                st.session_state.logged_in, st.session_state.user_email, st.session_state.is_admin = True, clean_email, True
+                st.session_state.logged_in = True
+                st.session_state.user_email = clean_email
+                st.session_state.is_admin = True
                 st.rerun()
-            elif clean_email and passcode == USER_PASSCODE:
+            elif clean_email and (passcode == USER_PASSCODE or hash_text(passcode) == ADMIN_PASSCODE_HASH):
                 db = load_db()
-                # Strict Persistence Check: केवल बिलकुल नए यूजर को 10 कॉइन मिलेंगे
+                # Strict Balance Check: नए यूजर को 10 कॉइन्स, पुराने यूजर का बचा बैलेंस दर्ज रहेगा
                 if clean_email not in db["users"]:
                     db["users"][clean_email] = 10
                     save_db(db)
-                st.session_state.logged_in, st.session_state.user_email, st.session_state.is_admin = True, clean_email, False
+                st.session_state.logged_in = True
+                st.session_state.user_email = clean_email
+                st.session_state.is_admin = False
                 st.rerun()
-            else: st.error("Invalid Credentials!")
+            else:
+                st.error("❌ Please enter a valid Email Address!")
 
 else:
     current_user = st.session_state.user_email
     db_data = load_db()
     
-    # Strict Balance Load: डेटाबेस में जो balance दर्ज है वही दिखाया जाएगा
+    # Load Real Balance
     if not st.session_state.is_admin:
         if current_user not in db_data["users"]:
             db_data["users"][current_user] = 10
@@ -225,70 +285,83 @@ else:
     else:
         user_coins = 99999
 
+    # Metric Bar
     m1, m2, m3 = st.columns(3)
     m1.metric("Available Coins", f"🪙 {user_coins}")
-    m2.metric("Account Status", "PRO Active")
+    m2.metric("Account Plan", "PRO Unlocked")
     m3.metric("Upload Limit", "200 MB")
-
-    if st.button("Sign Out"):
-        st.session_state.logged_in = False
-        st.rerun()
 
     st.divider()
 
-    # Dynamic Tabs Order Requested
-    tabs_list = ["📹 Sequence Studio", "📜 Download History", "🪙 Scan & Buy Coins", "💬 Help & Support"]
-    if st.session_state.is_admin: tabs_list.append("⚙️ Admin Control")
+    # Dynamic Navigation Tabs
+    tabs_list = ["📹 Dynamic Sequence Studio", "📜 Download History", "🪙 Scan & Recharge Coins", "💬 Help & Support"]
+    if st.session_state.is_admin:
+        tabs_list.append("⚙️ Admin Control Panel")
     
     tabs = st.tabs(tabs_list)
 
-    # 1. SEQUENCE STUDIO
+    # -------------------------------------------------------------------------
+    # TAB 1: SEQUENCE VIDEO STUDIO
+    # -------------------------------------------------------------------------
     with tabs[0]:
         st.header("📤 15-Edit Sequence Video Processor")
-        proc_mode = st.radio("Choose Processing Mode:", ["Single Video Edit", "Bulk / Batch Editing (2-3 Videos)"])
+        proc_mode = st.radio("Choose Mode:", ["Single Video Processing", "Bulk Batch Processing (2-3 Videos)"])
         
         uploaded_files = []
-        if proc_mode == "Single Video Edit":
-            file = st.file_uploader("Choose video file", type=["mp4", "mov", "mkv", "avi"], key="s_up")
+        if proc_mode == "Single Video Processing":
+            file = st.file_uploader("Upload Target Video", type=["mp4", "mov", "mkv", "avi"], key="single_up")
             if file: uploaded_files.append(file)
         else:
-            files = st.file_uploader("Choose up to 3 videos", type=["mp4", "mov", "mkv", "avi"], accept_multiple_files=True, key="b_up")
+            files = st.file_uploader("Upload Batch Videos (Max 3)", type=["mp4", "mov", "mkv", "avi"], accept_multiple_files=True, key="bulk_up")
             if files: uploaded_files = files[:3]
 
         if uploaded_files:
-            quality_option = st.radio("Choose Export Quality:", ["720p (Free)", "1080p Full HD (3 Coins)", "2K Ultra HD (5 Coins)", "4K Ultra HD (10 Coins)"])
-            res_map = {"720p (Free)": (720, 0, "4000k"), "1080p Full HD (3 Coins)": (1080, 3, "12000k"), "2K Ultra HD (5 Coins)": (1440, 5, "24000k"), "4K Ultra HD (10 Coins)": (2160, 10, "45000k")}
+            st.divider()
+            st.subheader("⚙️ Quality & Watermark Customization")
+            quality_option = st.radio("Select Export Quality:", ["720p HD (Free)", "1080p Full HD (3 Coins)", "2K Ultra HD (5 Coins)", "4K Ultra HD (10 Coins)"])
+            res_map = {
+                "720p HD (Free)": (720, 0, "4000k"),
+                "1080p Full HD (3 Coins)": (1080, 3, "12000k"),
+                "2K Ultra HD (5 Coins)": (1440, 5, "24000k"),
+                "4K Ultra HD (10 Coins)": (2160, 10, "45000k")
+            }
             target_height, quality_coins, bitrate = res_map[quality_option]
 
-            # Calculate total coins needed
+            # Calculate Exact Coin Costs
             total_required_coins = 0
             for file in uploaded_files:
                 base = 5 if (file.size / (1024 * 1024)) < 50 else 10
                 total_required_coins += (base + quality_coins)
 
-            st.info(f"🪙 **Total Required Coins:** `{total_required_coins} Coins`")
+            st.info(f"🪙 **Total Deductible Coins:** `{total_required_coins} Coins`")
 
-            # Branding/Audio Options
-            wm_file = st.file_uploader("Upload Logo Overlay (Optional)", type=["png", "jpg"])
-            wm_pos = st.selectbox("Logo Position", ["Bottom-Right", "Bottom-Left", "Top-Right", "Top-Left"]) if wm_file else "Bottom-Right"
-            mute_audio = st.checkbox("Mute Original Video Sound")
-            bg_music_file = st.file_uploader("Background Music (Vol 2.0)", type=["mp3", "wav"])
+            col_wm1, col_wm2 = st.columns(2)
+            with col_wm1:
+                wm_file = st.file_uploader("Upload Logo Watermark (Optional)", type=["png", "jpg"])
+            with col_wm2:
+                wm_pos = st.selectbox("Logo Position", ["Bottom-Right", "Bottom-Left", "Top-Right", "Top-Left"]) if wm_file else "Bottom-Right"
+            
+            st.subheader("🎵 Audio Setup")
+            col_au1, col_au2 = st.columns(2)
+            with col_au1:
+                mute_audio = st.checkbox("Mute Original Sound Entirely")
+            with col_au2:
+                bg_music_file = st.file_uploader("Overlay Non-Copyright Music (Vol 2.0)", type=["mp3", "wav"])
 
-            if st.button(f"🚀 Start Processing & Deduct {total_required_coins} Coins", type="primary"):
+            if st.button(f"🚀 Render Video & Deduct {total_required_coins} Coins", type="primary"):
                 fresh_db = load_db()
                 bal = fresh_db["users"].get(current_user, 0) if not st.session_state.is_admin else 999999
 
                 if bal >= total_required_coins:
-                    # COIN DEDUCTION (Safe Forced JSON Save)
                     if not st.session_state.is_admin:
                         fresh_db["users"][current_user] -= total_required_coins
                         save_db(fresh_db)
-                        st.toast(f"🪙 {total_required_coins} Coins Deducted Successfully!", icon="💸")
+                        st.toast(f"🪙 {total_required_coins} Coins Deducted! Balance: {fresh_db['users'][current_user]}", icon="💸")
 
                     if not os.path.exists("exports"): os.makedirs("exports")
 
                     for idx, up_file in enumerate(uploaded_files):
-                        st.subheader(f"🎬 Processing Video {idx+1}/{len(uploaded_files)}: {up_file.name}")
+                        st.subheader(f"🎬 Processing File #{idx+1}: {up_file.name}")
                         p_bar = st.progress(0, text="Initializing Engine...")
                         
                         temp_in = f"temp_{idx}.mp4"
@@ -296,10 +369,8 @@ else:
                         with open(temp_in, "wb") as f: f.write(up_file.read())
 
                         try:
-                            # REALTIME PROGRESS BAR DRIVEN FUNCTION
                             process_single_video(temp_in, out_path, target_height, bitrate, wm_file, wm_pos, mute_audio, bg_music_file, p_bar)
                             
-                            # Add to History DB & Safe Save
                             db_hist = load_db()
                             if current_user not in db_hist["history"]: db_hist["history"][current_user] = []
                             db_hist["history"][current_user].append({
@@ -315,83 +386,125 @@ else:
                             st.error(f"Error processing {up_file.name}: {str(e)}")
 
                     st.balloons()
-                    st.success("🎉 All videos processed successfully!")
+                    st.success("🎉 All videos rendered successfully!")
                     time.sleep(1)
                     st.rerun()
                 else:
                     st.error(f"❌ Insufficient Balance! You need {total_required_coins} Coins.")
 
-    # 2. DOWNLOAD HISTORY
+    # -------------------------------------------------------------------------
+    # TAB 2: DOWNLOAD HISTORY
+    # -------------------------------------------------------------------------
     with tabs[1]:
-        st.header("📜 Download History")
+        st.header("📜 Exported Videos History")
         user_history = db_data.get("history", {}).get(current_user, [])
         if not user_history:
-            st.info("No videos edited yet.")
+            st.info("No video processing history found.")
         else:
             for item in reversed(user_history):
-                st.write(f"📹 **File:** `{item['filename']}`")
-                st.caption(f"🗓️ {item['date']} | Quality: {item['quality']} | Deducted: {item['coins']} Coins")
-                if os.path.exists(item['path']):
-                    with open(item['path'], "rb") as f:
-                        st.download_button(f"📥 Download ({item['quality']})", f, file_name=f"edited_{item['filename']}", key=item['path'])
-                else: st.warning("File expired on server.")
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.write(f"📹 **File:** `{item['filename']}`")
+                    st.caption(f"🗓️ {item['date']} | Resolution: {item['quality']} | Deducted: {item['coins']} Coins")
+                with c2:
+                    if os.path.exists(item['path']):
+                        with open(item['path'], "rb") as f:
+                            st.download_button(f"📥 Download ({item['quality']})", f, file_name=f"edited_{item['filename']}", key=item['path'])
+                    else:
+                        st.warning("File expired")
                 st.divider()
 
-    # 3. SCAN & BUY COINS
+    # -------------------------------------------------------------------------
+    # TAB 3: SCAN & BUY COINS
+    # -------------------------------------------------------------------------
     with tabs[2]:
-        st.header("🪙 Scan & Buy Coins")
-        plans = [("Starter", 49, 50), ("Popular", 99, 110), ("Value", 199, 221), ("Mega Pro", 399, 500)]
+        st.header("🪙 Buy Coins via UPI QR Code")
+        plans = [("Starter Pack", 49, 50), ("Popular Pack", 99, 110), ("Value Pack", 199, 221), ("Mega Pro Pack", 399, 500)]
         cols = st.columns(2)
         for idx, (pname, amt, c_val) in enumerate(plans):
             with cols[idx % 2]:
-                st.markdown(f"<div class='plan-card'><h3>{pname}</h3><h2>₹{amt}</h2><p>🪙 {c_val} Coins</p></div>", unsafe_allow_html=True)
-                if st.button(f"Buy ₹{amt}", key=f"plan_{idx}"):
+                st.markdown(f"""
+                <div class='plan-card'>
+                    <h3>{pname}</h3>
+                    <h2 style='color:#FFD700;'>₹{amt}</h2>
+                    <p style='font-size:1.2rem;'>🪙 <b>{c_val} Coins</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"Select ₹{amt} Plan", key=f"plan_{idx}"):
                     st.session_state.selected_plan = (pname, amt, c_val)
 
         if st.session_state.selected_plan:
             pname, amt, c_val = st.session_state.selected_plan
             st.divider()
-            st.subheader(f"📲 Pay ₹{amt} via UPI")
-            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa={UPI_ID}%26am={amt}", width=180)
-            utr = st.text_input("Enter 12-Digit UTR No.", max_chars=12)
-            if st.button("Submit UTR"):
+            st.subheader(f"📲 Scan & Pay ₹{amt} for {c_val} Coins")
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa={UPI_ID}%26am={amt}"
+            st.image(qr_url, width=200, caption=f"Pay ₹{amt} to UPI ID: {UPI_ID}")
+            
+            utr = st.text_input("Enter 12-Digit Transaction UTR No.", max_chars=12)
+            if st.button("Submit Payment for Verification"):
                 if len(utr) == 12 and utr.isdigit():
                     db_u = load_db()
                     db_u["pending_requests"].append({"user": current_user, "utr": utr, "amount": amt, "coins": c_val})
                     save_db(db_u)
-                    st.success("Submitted for Admin Approval!")
+                    st.success("✅ Payment Details Submitted! Admin will verify and credit coins soon.")
                     st.session_state.selected_plan = None
-                else: st.error("Enter valid 12-digit numeric UTR")
+                else:
+                    st.error("❌ Invalid UTR Number! Must be 12 digits.")
 
-    # 4. HELP & SUPPORT
+    # -------------------------------------------------------------------------
+    # TAB 4: HELP & SUPPORT
+    # -------------------------------------------------------------------------
     with tabs[3]:
-        st.header("💬 Help & Support")
-        with st.form("sup_f", clear_on_submit=True):
-            msg = st.text_area("Write your query:")
-            if st.form_submit_button("Send Ticket"):
+        st.header("💬 Help & Support Helpdesk")
+        with st.form("sup_form", clear_on_submit=True):
+            msg = st.text_area("Describe your issue or question:")
+            if st.form_submit_button("Send Support Ticket"):
                 if msg.strip():
                     db_s = load_db()
                     db_s["support_tickets"].append({"user": current_user, "message": msg.strip(), "reply": "", "status": "Pending"})
                     save_db(db_s)
-                    st.success("Ticket Sent!")
+                    st.success("Ticket submitted successfully!")
 
         st.divider()
+        st.subheader("📋 Your Queries")
         tickets = [t for t in db_data.get("support_tickets", []) if t.get("user") == current_user]
-        for t in reversed(tickets):
-            st.write(f"**You:** {t['message']}")
-            if t.get("reply"): st.success(f"**Admin:** {t['reply']}")
-            else: st.warning("Waiting for reply...")
-            st.divider()
+        if not tickets:
+            st.info("No queries asked yet.")
+        else:
+            for t in reversed(tickets):
+                st.write(f"**You:** {t['message']}")
+                if t.get("reply"): 
+                    st.success(f"**Admin Reply:** {t['reply']}")
+                else: 
+                    st.warning("Status: Pending Admin Reply...")
+                st.divider()
 
-    # 5. ADMIN CONTROL (IF ADMIN)
+    # -------------------------------------------------------------------------
+    # TAB 5: ADMIN CONTROL PANEL (ONLY FOR ADMIN)
+    # -------------------------------------------------------------------------
     if st.session_state.is_admin and len(tabs) > 4:
         with tabs[4]:
-            st.header("⚙️ Admin Panel")
+            st.header("⚙️ Admin Dashboard Control")
             db_a = load_db()
-            for idx, req in enumerate(list(db_a.get("pending_requests", []))):
-                st.write(f"User: `{req['user']}` | Amt: ₹{req['amount']} | UTR: `{req['utr']}`")
-                if st.button(f"Approve {req['coins']} Coins", key=f"ap_{idx}"):
-                    db_a["users"][req['user']] = db_a["users"].get(req['user'], 0) + req['coins']
-                    db_a["pending_requests"].pop(idx)
-                    save_db(db_a)
-                    st.rerun()
+            
+            st.subheader("💳 Pending Coin Requests")
+            pending = db_a.get("pending_requests", [])
+            if not pending:
+                st.info("No pending payment approvals.")
+            else:
+                for idx, req in enumerate(list(pending)):
+                    st.write(f"**User:** `{req['user']}` | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}`")
+                    col_ap, col_rj = st.columns(2)
+                    with col_ap:
+                        if st.button(f"✅ Approve {req['coins']} Coins", key=f"ap_{idx}"):
+                            db_a["users"][req['user']] = db_a["users"].get(req['user'], 0) + req['coins']
+                            db_a["pending_requests"].pop(idx)
+                            save_db(db_a)
+                            st.success(f"Approved {req['coins']} coins!")
+                            st.rerun()
+                    with col_rj:
+                        if st.button(f"❌ Reject", key=f"rj_{idx}"):
+                            db_a["pending_requests"].pop(idx)
+                            save_db(db_a)
+                            st.rerun()
+                    st.divider()
