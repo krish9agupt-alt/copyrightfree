@@ -136,7 +136,6 @@ def manual_zoom(clip, zoom_factor):
         left = (w - crop_w) // 2
         cropped = image[top:top+crop_h, left:left+crop_w]
         
-        # High-Quality Resampling Patch
         resizer = PIL.Image.Resampling.LANCZOS if hasattr(PIL.Image, 'Resampling') else PIL.Image.BICUBIC
         img_pil = PIL.Image.fromarray(cropped)
         resized_pil = img_pil.resize((w, h), resizer)
@@ -300,7 +299,6 @@ else:
                 index=0
             )
 
-            # High Bitrate & Resolution Mapping
             resolution_costs = {
                 "720p (Free)": (720, 0, "4000k"),
                 "1080p Full HD (3 Coins)": (1080, 3, "12000k"),
@@ -358,7 +356,6 @@ else:
                         
                         final_clip = concatenate_videoclips(clips)
 
-                        # Resolution Fix without PIL Error
                         if orig_h != target_height:
                             aspect_ratio = orig_w / float(orig_h)
                             new_w = int(target_height * aspect_ratio)
@@ -366,14 +363,14 @@ else:
                                 new_w += 1
                             final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-                        # Render with Ultra High Bitrate for Real 4K/2K/1080p Enhancement
+                        # CLEAN SAFE ENCODING CALL
                         final_clip.write_videofile(
                             output_path, 
                             codec="libx264", 
                             audio_codec="aac", 
                             bitrate=bitrate,
                             preset="medium",
-                            fft_options={"threads": 4},
+                            threads=4,
                             logger=None
                         )
                         
