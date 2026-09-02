@@ -32,7 +32,7 @@ USER_PASSCODE = "123456"
 UPI_ID = "cinepoliis@ibl"
 DB_FILE = "database.json"
 
-# Permanent Database Manager
+# Strict Real-time Database Engine
 def load_db():
     if not os.path.exists(DB_FILE):
         default_db = {"users": {}, "pending_requests": [], "support_tickets": []}
@@ -41,14 +41,7 @@ def load_db():
         return default_db
     try:
         with open(DB_FILE, "r") as f:
-            data = json.load(f)
-            if "users" not in data:
-                data["users"] = {}
-            if "support_tickets" not in data:
-                data["support_tickets"] = []
-            if "pending_requests" not in data:
-                data["pending_requests"] = []
-            return data
+            return json.load(f)
     except Exception:
         return {"users": {}, "pending_requests": [], "support_tickets": []}
 
@@ -223,11 +216,11 @@ if not st.session_state.logged_in:
                 st.session_state.user_email = clean_email
                 st.session_state.is_admin = True
                 st.success("Welcome Admin! Accessing Dashboard...")
-                time.sleep(1)
+                time.sleep(0.5)
                 st.rerun()
             elif clean_email and passcode == USER_PASSCODE:
                 db_data = load_db()
-                # UPDATED BONUS COINS: 10 Coins for New User Registration
+                # STRICT FIX: Exact 10 Bonus Coins for new user signup
                 if clean_email not in db_data["users"]:
                     db_data["users"][clean_email] = 10
                     save_db(db_data)
@@ -236,7 +229,7 @@ if not st.session_state.logged_in:
                 st.session_state.user_email = clean_email
                 st.session_state.is_admin = False
                 st.success("Access Granted!")
-                time.sleep(1)
+                time.sleep(0.5)
                 st.rerun()
             elif hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) != ADMIN_PASSCODE_HASH:
                 st.error("Incorrect Admin Passcode!")
@@ -252,11 +245,13 @@ else:
     current_user = st.session_state.user_email
     
     db_data = load_db()
-    if current_user not in db_data["users"] and not st.session_state.is_admin:
-        db_data["users"][current_user] = 10
-        save_db(db_data)
-        
-    user_coins = db_data["users"].get(current_user, 10 if not st.session_state.is_admin else 99999)
+    if not st.session_state.is_admin:
+        if current_user not in db_data["users"]:
+            db_data["users"][current_user] = 10
+            save_db(db_data)
+        user_coins = db_data["users"][current_user]
+    else:
+        user_coins = 99999
 
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     metric_col1.metric("Available Coins", f"🪙 {user_coins}")
@@ -315,12 +310,12 @@ else:
             )
 
             if st.button(f"🚀 Process Video ({total_required_coins} Coins)", type="primary"):
-                db_data = load_db()
-                user_coins = db_data["users"].get(current_user, 0)
+                fresh_db = load_db()
+                current_balance = fresh_db["users"].get(current_user, 0)
 
-                if user_coins >= total_required_coins:
-                    db_data["users"][current_user] -= total_required_coins
-                    save_db(db_data)
+                if current_balance >= total_required_coins:
+                    fresh_db["users"][current_user] -= total_required_coins
+                    save_db(fresh_db)
                     
                     process_bar = st.progress(0, text="⚙️ AI Editing Engine Initializing...")
                     status_box = st.empty()
@@ -387,15 +382,16 @@ else:
                                 type="primary"
                             )
                         
-                        time.sleep(1)
+                        time.sleep(0.5)
                         st.rerun()
 
                     except Exception as e:
-                        db_data["users"][current_user] += total_required_coins
-                        save_db(db_data)
+                        fresh_db = load_db()
+                        fresh_db["users"][current_user] += total_required_coins
+                        save_db(fresh_db)
                         st.error(f"❌ Video Processing Error: {str(e)}. Coins have been refunded.")
                 else:
-                    st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {user_coins} Coins.")
+                    st.error(f"❌ Insufficient Coins! You need 🪙 {total_required_coins} Coins, but you have 🪙 {current_balance} Coins.")
 
     # --- TAB 2: SCAN & BUY COINS ---
     with tab2:
@@ -441,17 +437,17 @@ else:
                 utr_number = st.text_input("Enter 12-Digit Transaction / UTR No.", max_chars=12)
                 if st.button("SUBMIT FOR VERIFICATION", type="primary"):
                     if len(utr_number) == 12 and utr_number.isdigit():
-                        db_data = load_db()
-                        db_data["pending_requests"].append({
+                        # STRICT FIX: Read fresh DB and write back payment immediately
+                        current_db = load_db()
+                        current_db["pending_requests"].append({
                             "user": current_user,
                             "utr": utr_number,
                             "amount": amount,
-                            "coins": coins_to_add,
-                            "status": "Pending"
+                            "coins": coins_to_add
                         })
-                        save_db(db_data)
-                        st.success("⏳ UTR submitted! Coins will be added after Admin verifies payment.")
+                        save_db(current_db)
                         st.session_state.selected_plan = None
+                        st.success("⏳ UTR Submitted Successfully! Admin can now approve it.")
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -465,36 +461,37 @@ else:
             user_msg = st.text_area("Your Message / Query", placeholder="Describe your problem or question here...")
             sub_ticket = st.form_submit_button("📩 Send Message")
             if sub_ticket and user_msg.strip():
-                db_data = load_db()
-                db_data["support_tickets"].append({
-                    "id": int(time.time()),
+                current_db = load_db()
+                ticket_id = f"TICK_{int(time.time()*1000)}"
+                current_db["support_tickets"].append({
+                    "ticket_id": ticket_id,
                     "user": current_user,
                     "message": user_msg.strip(),
-                    "reply": "No reply yet from Admin.",
+                    "reply": "",
                     "status": "Pending"
                 })
-                save_db(db_data)
-                st.success("Message sent to Admin successfully!")
-                time.sleep(1)
+                save_db(current_db)
+                st.success("Message sent to Admin!")
+                time.sleep(0.5)
                 st.rerun()
 
         st.divider()
-        st.subheader("📋 Your Private Tickets")
+        st.subheader("📋 Your Private Chats")
         
-        db_data = load_db()
-        # FILTER: Show ONLY messages belonging to the current user
-        my_tickets = [t for t in db_data.get("support_tickets", []) if t.get("user") == current_user]
+        current_db = load_db()
+        # STRICT FIX: Filter by current_user ONLY
+        user_tickets = [t for t in current_db.get("support_tickets", []) if t.get("user") == current_user]
         
-        if not my_tickets:
-            st.info("You have no support messages yet.")
+        if not user_tickets:
+            st.info("No previous messages.")
         else:
-            for t in reversed(my_tickets):
-                st.markdown(f"**Query:** {t['message']}")
-                if t['reply'] != "No reply yet from Admin.":
+            for t in reversed(user_tickets):
+                st.write(f"**You:** {t['message']}")
+                if t.get("reply"):
                     st.success(f"**Admin Reply:** {t['reply']}")
                 else:
-                    st.warning(f"**Admin Reply:** {t['reply']}")
-                st.caption(f"Status: `{t['status']}`")
+                    st.warning("⏳ Waiting for Admin reply...")
+                st.caption(f"Status: `{t.get('status', 'Pending')}`")
                 st.divider()
 
     # --- TAB 4: ADMIN CONTROL PANEL ---
@@ -502,58 +499,61 @@ else:
         with tab4:
             st.header("⚙️ Admin Dashboard & Control")
             
-            db_data = load_db()
+            # Real-time Load
+            admin_db = load_db()
             
-            # --- Payment Approvals ---
+            # --- PAYMENT APPROVAL SECTION ---
             st.subheader("💳 Pending Payment Approvals")
-            pending_list = db_data.get("pending_requests", [])
+            pending_requests = admin_db.get("pending_requests", [])
 
-            if len(pending_list) == 0:
-                st.info("No pending payment requests.")
+            if not pending_requests:
+                st.info("No pending payment approvals.")
             else:
-                for idx, req in enumerate(list(pending_list)):
-                    st.warning(f"**User:** {req['user']} | **Amount:** ₹{req['amount']} | **UTR:** `{req['utr']}` | **Coins:** 🪙 {req['coins']}")
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        if st.button(f"✅ Approve ({req['coins']} Coins)", key=f"app_{idx}"):
-                            current_db = load_db()
-                            req_user = req["user"]
-                            current_db["users"][req_user] = current_db["users"].get(req_user, 0) + req["coins"]
-                            current_db["pending_requests"].pop(idx)
-                            save_db(current_db)
-                            st.success(f"Approved coins for {req_user}")
-                            time.sleep(1)
-                            st.rerun()
-                    with col_b:
-                        if st.button("❌ Reject", key=f"rej_{idx}"):
-                            current_db = load_db()
-                            current_db["pending_requests"].pop(idx)
-                            save_db(current_db)
-                            st.error("Payment request rejected.")
-                            time.sleep(1)
+                for idx, req in enumerate(list(pending_requests)):
+                    st.warning(f"👤 **User:** `{req['user']}` | 💰 **Amount:** ₹{req['amount']} | 🔢 **UTR:** `{req['utr']}` | 🪙 **Coins:** {req['coins']}")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button(f"✅ Approve ({req['coins']} Coins)", key=f"app_btn_{idx}"):
+                            db_to_update = load_db()
+                            target_user = req["user"]
+                            db_to_update["users"][target_user] = db_to_update["users"].get(target_user, 0) + req["coins"]
+                            db_to_update["pending_requests"].pop(idx)
+                            save_db(db_to_update)
+                            st.success(f"Approved {req['coins']} coins for {target_user}!")
+                            time.sleep(0.5)
                             st.rerun()
 
-            st.divider()
+                    with col2:
+                        if st.button("❌ Reject Request", key=f"rej_btn_{idx}"):
+                            db_to_update = load_db()
+                            db_to_update["pending_requests"].pop(idx)
+                            save_db(db_to_update)
+                            st.error("Request rejected.")
+                            time.sleep(0.5)
+                            st.rerun()
+                    st.divider()
 
-            # --- User Support Chats (All Users visible to Admin) ---
-            st.subheader("💬 User Support Requests (All Users)")
-            tickets = db_data.get("support_tickets", [])
-            
-            if len(tickets) == 0:
-                st.info("No support tickets found.")
+            # --- USER SUPPORT CHAT SECTION ---
+            st.subheader("💬 All User Support Tickets")
+            all_tickets = admin_db.get("support_tickets", [])
+
+            if not all_tickets:
+                st.info("No user tickets found.")
             else:
-                for idx, t in enumerate(list(tickets)):
-                    st.info(f"**From User:** {t['user']}\n\n**Query:** {t['message']}")
+                for idx, t in enumerate(list(all_tickets)):
+                    st.info(f"👤 **User:** `{t['user']}`\n\n💬 **Message:** {t['message']}")
                     
-                    default_val = "" if t["reply"] == "No reply yet from Admin." else t["reply"]
-                    reply_text = st.text_input(f"Reply to {t['user']}", value=default_val, key=f"rep_{idx}")
+                    existing_reply = t.get("reply", "")
+                    reply_input = st.text_input(f"Reply to {t['user']}", value=existing_reply, key=f"admin_reply_{idx}")
                     
-                    if st.button("Send Reply & Resolve", key=f"btn_rep_{idx}"):
-                        current_db = load_db()
-                        current_db["support_tickets"][idx]["reply"] = reply_text
-                        current_db["support_tickets"][idx]["status"] = "Resolved"
-                        save_db(current_db)
-                        st.success(f"Reply sent to {t['user']}!")
-                        time.sleep(1)
-                        st.rerun()
+                    if st.button(f"📩 Send Reply to {t['user']}", key=f"reply_btn_{idx}"):
+                        if reply_input.strip():
+                            db_to_update = load_db()
+                            db_to_update["support_tickets"][idx]["reply"] = reply_input.strip()
+                            db_to_update["support_tickets"][idx]["status"] = "Resolved"
+                            save_db(db_to_update)
+                            st.success("Reply sent successfully!")
+                            time.sleep(0.5)
+                            st.rerun()
                     st.divider()
