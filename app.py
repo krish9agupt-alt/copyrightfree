@@ -105,7 +105,7 @@ st.markdown("""
     /* Background using exact Doodle Artwork with Dark Overlay */
     .stApp { 
         background: linear-gradient(rgba(11, 12, 16, 0.85), rgba(11, 12, 16, 0.85)), 
-                    url('https://i.postimg.cc/85z1Xz5Z/no-copyright-doodle.jpg');
+                    url('https://i.postimg.cc/P5P1CkHY/13952480-1773-4B38-A99F-9EAD19141796.png');
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
