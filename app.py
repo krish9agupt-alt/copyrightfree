@@ -91,59 +91,57 @@ if "is_admin" not in st.session_state:
 if "selected_plan" not in st.session_state: 
     st.session_state.selected_plan = None
 
-# Custom CSS with Wallpaper & Hidden Top Icons
-WALLPAPER_URL = "https://i.ibb.co/3ykXgY8/doodle-bg.jpg"
-
-st.markdown(f"""
+# Custom CSS with Exact Uploaded Wallpaper & Hidden Top Bar Icons
+st.markdown("""
     <style>
-    /* Hide Streamlit Header, Toolbar, Footer & 3 Top Icons */
-    #MainMenu {{visibility: hidden;}}
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    [data-testid="stHeader"] {{display: none !important;}}
-    [data-testid="stToolbar"] {{display: none !important;}}
-    .stAppToolbar {{display: none !important;}}
+    /* Hide Streamlit Header, Toolbar & Top 3 Icons Completely */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    [data-testid="stHeader"] {display: none !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    .stAppToolbar {display: none !important;}
 
-    /* Full Background Wallpaper with Dark Overlay for Text Visibility */
-    .stApp {{ 
-        background: linear-gradient(rgba(11, 12, 16, 0.82), rgba(11, 12, 16, 0.82)), 
-                    url('https://img.freepik.com/free-vector/hand-drawn-no-copyright-doodles_23-2150385966.jpg');
+    /* Background using exact Doodle Artwork with Dark Overlay */
+    .stApp { 
+        background: linear-gradient(rgba(11, 12, 16, 0.85), rgba(11, 12, 16, 0.85)), 
+                    url('https://i.postimg.cc/85z1Xz5Z/no-copyright-doodle.jpg');
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
         color: #FFFFFF;
-    }}
+    }
     
-    [data-testid="stSidebar"] {{ 
+    [data-testid="stSidebar"] { 
         background-color: rgba(31, 40, 51, 0.95); 
-    }}
+    }
     
-    /* Make Input Text Labels Bright White & Bold */
-    label, div[data-aria-hidden="true"], .stWidgetLabel p {{
+    /* Make Input Text Labels Clearly Visible Bright White */
+    label, div[data-aria-hidden="true"], .stWidgetLabel p {
         color: #FFFFFF !important;
         font-weight: 700 !important;
         font-size: 1.05rem !important;
-    }}
+    }
     
-    .main-header {{
+    .main-header {
         text-align: center; font-weight: 900; font-size: 2.5rem;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         margin-bottom: 20px;
-        text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
-    }}
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.9);
+    }
     
-    .plan-card {{
+    .plan-card {
         background: rgba(18, 18, 18, 0.9); border: 2px solid #FFD700; border-radius: 15px;
         padding: 1.5rem; text-align: center; margin-bottom: 1rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }}
+        box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    }
     
-    .stButton>button {{
+    .stButton>button {
         width: 100%; border-radius: 10px; height: 3em;
         background: linear-gradient(90deg, #FFD700, #FF69B4); 
         color: #000; font-weight: bold; border: none;
-    }}
+    }
     </style>
 """, unsafe_allow_html=True)
 
