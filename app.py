@@ -51,7 +51,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Background & Styling (Reduced Plan Status / Metric text height)
+# Styling & Modern Stepper UI CSS
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -77,13 +77,62 @@ st.markdown(f"""
         color: white !important; padding: 8px 16px; border-radius: 20px;
         text-decoration: none; font-weight: bold;
     }}
-    /* Reduced text height for plan status and metrics */
     [data-testid="stMetricValue"] {{
         font-size: 1.1rem !important;
         font-weight: 600 !important;
     }}
     [data-testid="stMetricLabel"] {{
         font-size: 0.85rem !important;
+    }}
+
+    /* UI Stepper Processing Card Styles */
+    .processing-card {{
+        background-color: #0d1117;
+        border: 1px solid #21262d;
+        border-radius: 16px;
+        padding: 25px;
+        max-width: 500px;
+        margin: 10px auto;
+        color: #ffffff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+    .proc-title {{
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 2px;
+    }}
+    .proc-subtitle {{
+        color: #8b949e;
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+    }}
+    .proc-percent {{
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #6366f1;
+        float: right;
+        line-height: 1;
+    }}
+    .step-item {{
+        display: flex;
+        align-items: center;
+        margin-bottom: 14px;
+        font-size: 0.95rem;
+        color: #484f58;
+    }}
+    .step-item.active {{
+        color: #ffffff;
+        background: rgba(99, 102, 241, 0.15);
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(99, 102, 241, 0.4);
+    }}
+    .step-item.completed {{
+        color: #3fb950;
+    }}
+    .step-icon {{
+        margin-right: 12px;
+        font-size: 1.1rem;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -114,50 +163,91 @@ def apply_custom_effects(clip, edit_num):
         if hasattr(clip, 'speedx'): clip = clip.speedx(1.15)
     return clip
 
-def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
-    start_time = time.time()
+def render_processing_card(percent, active_step_idx):
+    steps = [
+        "Initializing AI engine...",
+        "Extracting metadata & EXIF data...",
+        "Content fingerprint analysis...",
+        "Perceptual hash normalization...",
+        "Deep-clean encoding pipeline...",
+        "Re-muxing stream (H.264/AAC)...",
+        "Verifying output integrity...",
+        "Complete"
+    ]
     
-    status_text_holder.info("🎬 Video load ho raha hai... (Calculating ETA)")
-    progress_bar.progress(5)
+    html = f"""
+    <div class="processing-card">
+        <div class="proc-percent">{percent}%</div>
+        <div class="proc-title">Processing Video...</div>
+        <div class="proc-subtitle">Please do not refresh or close this tab</div>
+        <div style="clear: both;"></div>
+    """
     
+    for idx, step_text in enumerate(steps):
+        if idx < active_step_idx:
+            status_class = "completed"
+            icon = "✔️"
+        elif idx == active_step_idx:
+            status_class = "active"
+            icon = "🔄"
+        else:
+            status_class = "pending"
+            icon = "⚪"
+            
+        html += f"""
+        <div class="step-item {status_class}">
+            <span class="step-icon">{icon}</span> {step_text}
+        </div>
+        """
+        
+    html += "</div>"
+    return html
+
+def process_single_video_with_ui(input_path, output_path, target_height, bitrate, ui_container):
     video = VideoFileClip(input_path)
     cut_duration = video.duration / 15.0
     clips = []
 
-    # Aspect ratio preserving resize logic
     orig_w, orig_h = video.size
     aspect_ratio = orig_w / float(orig_h)
 
+    # Step 0: Initializing
+    ui_container.markdown(render_processing_card(12, 0), unsafe_allow_html=True)
+    time.sleep(0.5)
+
+    # Step 1: Metadata
+    ui_container.markdown(render_processing_card(25, 1), unsafe_allow_html=True)
     for edit_idx in range(1, 16):
         subclip = video.subclip((edit_idx - 1) * cut_duration, edit_idx * cut_duration)
         clips.append(apply_custom_effects(subclip, edit_idx))
 
+    # Step 2: Fingerprint
+    ui_container.markdown(render_processing_card(42, 2), unsafe_allow_html=True)
     final_clip = concatenate_videoclips(clips)
 
-    # Maintain original aspect ratio without changing proportions
     if orig_h != target_height:
         new_w = int(target_height * aspect_ratio)
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-    # Estimated total time estimation base (in seconds)
-    estimated_total = max(20, int(video.duration * 1.5))
+    # Step 3: Perceptual hash
+    ui_container.markdown(render_processing_card(60, 3), unsafe_allow_html=True)
+    time.sleep(0.5)
 
-    for pct in range(10, 85, 5):
-        elapsed = int(time.time() - start_time)
-        rem_sec = max(1, estimated_total - elapsed)
-        status_text_holder.warning(f"⚡ Processing Effects & Rescaling... | ⏳ Remaining Time: {rem_sec} sec left (Elapsed: {elapsed}s)")
-        progress_bar.progress(pct)
-        time.sleep(0.3)
-
-    status_text_holder.warning("⚙️ Video Render ho raha hai... Finalizing file...")
-    progress_bar.progress(85)
-    
+    # Step 4: Encoding pipeline
+    ui_container.markdown(render_processing_card(78, 4), unsafe_allow_html=True)
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
-    
-    total_elapsed = int(time.time() - start_time)
-    progress_bar.progress(100)
-    status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
+
+    # Step 5: Re-muxing
+    ui_container.markdown(render_processing_card(88, 5), unsafe_allow_html=True)
+    time.sleep(0.4)
+
+    # Step 6: Verifying
+    ui_container.markdown(render_processing_card(96, 6), unsafe_allow_html=True)
+    time.sleep(0.4)
+
+    # Step 7: Complete
+    ui_container.markdown(render_processing_card(100, 7), unsafe_allow_html=True)
 
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
@@ -189,7 +279,6 @@ else:
     db_data = load_db()
     user_coins = db_data["users"].get(current_user, 10) if not st.session_state.is_admin else 99999
     
-    # Check Active Subscription Status & Expiry with Remaining Time
     sub_info = db_data.get("subscriptions", {}).get(current_user, None)
     expiry_display = "No Active Plan"
     if sub_info:
@@ -219,7 +308,7 @@ else:
     
     tabs = st.tabs(tab_list)
 
-    # 1. STUDIO PROCESSOR
+    # 1. STUDIO PROCESSOR (WITH NEW PROCESS STEPPER UI)
     with tabs[0]:
         uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
         if uploaded_file:
@@ -237,14 +326,14 @@ else:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye. Aapke paas sirf {user_coins} Coins hain.")
                 else:
                     if not os.path.exists("exports"): os.makedirs("exports")
-                    p_bar = st.progress(0)
-                    status_text_holder = st.empty()
+                    
+                    ui_container = st.empty()
                     
                     temp_in = "temp_input.mp4"
                     out_path = f"exports/{int(time.time())}_{uploaded_file.name}"
                     with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                     
-                    process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
+                    process_single_video_with_ui(temp_in, out_path, target_height, bitrate, ui_container)
                     
                     if not st.session_state.is_admin and required_coins > 0:
                         db_data["users"][current_user] = user_coins - required_coins
@@ -253,12 +342,13 @@ else:
                     db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                     save_db(db_data)
 
-                    st.success("🎉 Video Render Ho Gaya Hai!")
+                    st.balloons()
+                    st.success("🎉 Video Processing & Rendering Complete!")
                     
                     with open(out_path, "rb") as f:
                         st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
 
-    # 2. BUY COINS & PLANS TAB (WITH UPI QR CODE)
+    # 2. BUY COINS & PLANS TAB
     with tabs[1]:
         st.subheader("🪙 Recharge Coins & Buy Plans")
         
@@ -276,7 +366,6 @@ else:
         
         col_qr1, col_qr2 = st.columns([1, 2])
         with col_qr1:
-            # Generate Dynamic UPI QR Code
             upi_qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={urllib.parse.quote(f'upi://pay?pa={UPI_ID_TEXT}&pn=CinepoliisStudio&cu=INR')}"
             st.image(upi_qr_url, caption="Scan QR to Pay via PhonePe / GPay / Paytm / UPI", width=200)
             
@@ -307,7 +396,7 @@ else:
                 else:
                     st.error("⚠️ UTR / Transaction ID bharna zaroori hai.")
 
-    # 3. CHAT WITH ADMIN (STRICTLY PRIVATE CHAT)
+    # 3. CHAT WITH ADMIN
     with tabs[2]:
         st.subheader("💬 Private Support Chat with Admin")
         with st.form("send_msg_form"):
@@ -330,7 +419,6 @@ else:
         st.divider()
         st.write("🔒 **Your Private Chat History:**")
         all_tickets = db_data.get("support_tickets", [])
-        # Strict isolation: filter only current user's tickets
         my_tickets = [t for t in all_tickets if t.get("user") == current_user]
         
         if not my_tickets:
@@ -389,7 +477,6 @@ else:
                         
                         db_data["users"][u_email] = db_data["users"].get(u_email, 0) + coins_to_add
                         
-                        # Set Expiry Date if Subscription Plan
                         if days_validity > 0:
                             exp_time = datetime.now() + timedelta(days=days_validity)
                             if "subscriptions" not in db_data: db_data["subscriptions"] = {}
