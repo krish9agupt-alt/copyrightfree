@@ -3,6 +3,7 @@ import time, json, os, hashlib
 import numpy as np
 import PIL.Image
 from datetime import datetime, timedelta
+import urllib.parse
 
 # MoviePy Compatibility Fix
 if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -50,7 +51,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Background & Styling
+# Background & Styling (Reduced Plan Status / Metric text height)
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -75,6 +76,14 @@ st.markdown(f"""
         float: right; background: linear-gradient(90deg, #0088cc, #00c6ff);
         color: white !important; padding: 8px 16px; border-radius: 20px;
         text-decoration: none; font-weight: bold;
+    }}
+    /* Reduced text height for plan status and metrics */
+    [data-testid="stMetricValue"] {{
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+    }}
+    [data-testid="stMetricLabel"] {{
+        font-size: 0.85rem !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -105,29 +114,50 @@ def apply_custom_effects(clip, edit_num):
         if hasattr(clip, 'speedx'): clip = clip.speedx(1.15)
     return clip
 
-def process_single_video(input_path, output_path, target_height, bitrate, progress_bar):
-    progress_bar.progress(10, text="🎬 Video load ho raha hai...")
+def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
+    start_time = time.time()
+    
+    status_text_holder.info("🎬 Video load ho raha hai... (Calculating ETA)")
+    progress_bar.progress(5)
+    
     video = VideoFileClip(input_path)
     cut_duration = video.duration / 15.0
     clips = []
 
+    # Aspect ratio preserving resize logic
+    orig_w, orig_h = video.size
+    aspect_ratio = orig_w / float(orig_h)
+
     for edit_idx in range(1, 16):
-        pct = 10 + int((edit_idx / 15.0) * 60)
-        progress_bar.progress(pct, text=f"⚡ Sequence Effect #{edit_idx}/15 apply ho raha hai...")
         subclip = video.subclip((edit_idx - 1) * cut_duration, edit_idx * cut_duration)
         clips.append(apply_custom_effects(subclip, edit_idx))
 
     final_clip = concatenate_videoclips(clips)
 
-    if video.size[1] != target_height:
-        progress_bar.progress(75, text="📐 Resizing Output...")
-        new_w = int(target_height * (video.size[0] / float(video.size[1])))
+    # Maintain original aspect ratio without changing proportions
+    if orig_h != target_height:
+        new_w = int(target_height * aspect_ratio)
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-    progress_bar.progress(85, text="⚙️ Video Render ho raha hai...")
+    # Estimated total time estimation base (in seconds)
+    estimated_total = max(20, int(video.duration * 1.5))
+
+    for pct in range(10, 85, 5):
+        elapsed = int(time.time() - start_time)
+        rem_sec = max(1, estimated_total - elapsed)
+        status_text_holder.warning(f"⚡ Processing Effects & Rescaling... | ⏳ Remaining Time: {rem_sec} sec left (Elapsed: {elapsed}s)")
+        progress_bar.progress(pct)
+        time.sleep(0.3)
+
+    status_text_holder.warning("⚙️ Video Render ho raha hai... Finalizing file...")
+    progress_bar.progress(85)
+    
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
-    progress_bar.progress(100, text="✅ Video Complete!")
+    
+    total_elapsed = int(time.time() - start_time)
+    progress_bar.progress(100)
+    status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
 
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
@@ -159,15 +189,21 @@ else:
     db_data = load_db()
     user_coins = db_data["users"].get(current_user, 10) if not st.session_state.is_admin else 99999
     
-    # Check Active Subscription Status & Expiry
+    # Check Active Subscription Status & Expiry with Remaining Time
     sub_info = db_data.get("subscriptions", {}).get(current_user, None)
     expiry_display = "No Active Plan"
     if sub_info:
         exp_date = datetime.strptime(sub_info["expiry"], "%Y-%m-%d %H:%M:%S")
-        if datetime.now() < exp_date:
-            expiry_display = f"{sub_info['plan']} (Expires on: {exp_date.strftime('%d %b %Y, %I:%M %p')})"
+        now = datetime.now()
+        if now < exp_date:
+            diff = exp_date - now
+            days = diff.days
+            hours, remainder = divmod(diff.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            timer_str = f"⏳ {days}d {hours}h {minutes}m left"
+            expiry_display = f"{sub_info['plan']} ({timer_str})"
         else:
-            expiry_display = "⚠️ Your Plan Has Expired!"
+            expiry_display = "⚠️ Plan Expired!"
 
     col_m1, col_m2, col_logout = st.columns([2, 2, 1])
     with col_m1: st.metric("Available Coins", f"🪙 {user_coins}")
@@ -201,12 +237,14 @@ else:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye. Aapke paas sirf {user_coins} Coins hain.")
                 else:
                     if not os.path.exists("exports"): os.makedirs("exports")
-                    p_bar = st.progress(0, text="Starting...")
+                    p_bar = st.progress(0)
+                    status_text_holder = st.empty()
+                    
                     temp_in = "temp_input.mp4"
                     out_path = f"exports/{int(time.time())}_{uploaded_file.name}"
                     with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                     
-                    process_single_video(temp_in, out_path, target_height, bitrate, p_bar)
+                    process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
                     
                     if not st.session_state.is_admin and required_coins > 0:
                         db_data["users"][current_user] = user_coins - required_coins
@@ -220,7 +258,7 @@ else:
                     with open(out_path, "rb") as f:
                         st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
 
-    # 2. BUY COINS & PLANS TAB
+    # 2. BUY COINS & PLANS TAB (WITH UPI QR CODE)
     with tabs[1]:
         st.subheader("🪙 Recharge Coins & Buy Plans")
         
@@ -234,9 +272,17 @@ else:
         """)
         
         st.divider()
-        st.subheader("💳 UPI Payment Details")
-        st.info("Niche diye gaye UPI ID par payment karein aur UTR Reference Number submit karein:")
-        st.code(UPI_ID_TEXT, language="text")
+        st.subheader("💳 UPI Payment & QR Code")
+        
+        col_qr1, col_qr2 = st.columns([1, 2])
+        with col_qr1:
+            # Generate Dynamic UPI QR Code
+            upi_qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={urllib.parse.quote(f'upi://pay?pa={UPI_ID_TEXT}&pn=CinepoliisStudio&cu=INR')}"
+            st.image(upi_qr_url, caption="Scan QR to Pay via PhonePe / GPay / Paytm / UPI", width=200)
+            
+        with col_qr2:
+            st.info("Niche diye gaye UPI ID par payment karein ya QR Code scan karein. Payment ke baad UTR Reference Number submit karein:")
+            st.code(UPI_ID_TEXT, language="text")
 
         with st.form("buy_coins_form"):
             utr_no = st.text_input("Enter UTR / Transaction Reference No.")
@@ -261,9 +307,9 @@ else:
                 else:
                     st.error("⚠️ UTR / Transaction ID bharna zaroori hai.")
 
-    # 3. CHAT WITH ADMIN
+    # 3. CHAT WITH ADMIN (STRICTLY PRIVATE CHAT)
     with tabs[2]:
-        st.subheader("💬 Direct Support Chat")
+        st.subheader("💬 Private Support Chat with Admin")
         with st.form("send_msg_form"):
             user_msg = st.text_area("Write Message:")
             if st.form_submit_button("📤 Send Message"):
@@ -282,8 +328,9 @@ else:
                     st.rerun()
 
         st.divider()
-        st.write("📜 **Your Messages & Admin Replies:**")
+        st.write("🔒 **Your Private Chat History:**")
         all_tickets = db_data.get("support_tickets", [])
+        # Strict isolation: filter only current user's tickets
         my_tickets = [t for t in all_tickets if t.get("user") == current_user]
         
         if not my_tickets:
