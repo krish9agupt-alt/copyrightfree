@@ -51,7 +51,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Styling & Modern Stepper UI CSS
+# CSS Styling (Compact UI Box & Reduced Text Sizes)
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -85,54 +85,69 @@ st.markdown(f"""
         font-size: 0.85rem !important;
     }}
 
-    /* UI Stepper Processing Card Styles */
+    /* Compact Processing Card Styling */
     .processing-card {{
         background-color: #0d1117;
         border: 1px solid #21262d;
-        border-radius: 16px;
-        padding: 25px;
-        max-width: 500px;
-        margin: 10px auto;
+        border-radius: 10px;
+        padding: 12px 18px;
+        max-width: 380px;
+        margin: 5px auto;
         color: #ffffff;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: sans-serif;
+    }}
+    .proc-header {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
     }}
     .proc-title {{
-        font-size: 1.8rem;
-        font-weight: 800;
-        margin-bottom: 2px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
     }}
     .proc-subtitle {{
         color: #8b949e;
-        font-size: 0.95rem;
-        margin-bottom: 20px;
+        font-size: 0.75rem;
+        margin-bottom: 8px;
     }}
     .proc-percent {{
-        font-size: 2.5rem;
-        font-weight: 900;
-        color: #6366f1;
-        float: right;
-        line-height: 1;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #818cf8;
+    }}
+    .progress-bar-bg {{
+        width: 100%;
+        background-color: #21262d;
+        border-radius: 6px;
+        height: 8px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }}
+    .progress-bar-fill {{
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #a855f7);
+        width: 0%;
+        transition: width 0.1s ease-in-out;
     }}
     .step-item {{
         display: flex;
         align-items: center;
-        margin-bottom: 14px;
-        font-size: 0.95rem;
+        margin-bottom: 4px;
+        font-size: 0.78rem;
         color: #484f58;
     }}
     .step-item.active {{
         color: #ffffff;
-        background: rgba(99, 102, 241, 0.15);
-        padding: 8px 12px;
-        border-radius: 8px;
-        border: 1px solid rgba(99, 102, 241, 0.4);
+        font-weight: 600;
     }}
     .step-item.completed {{
         color: #3fb950;
     }}
     .step-icon {{
-        margin-right: 12px;
-        font-size: 1.1rem;
+        margin-right: 8px;
+        font-size: 0.85rem;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -163,7 +178,7 @@ def apply_custom_effects(clip, edit_num):
         if hasattr(clip, 'speedx'): clip = clip.speedx(1.15)
     return clip
 
-def render_processing_card(percent, active_step_idx):
+def render_compact_processing_card(percent):
     steps = [
         "Initializing AI engine...",
         "Extracting metadata & EXIF data...",
@@ -175,12 +190,26 @@ def render_processing_card(percent, active_step_idx):
         "Complete"
     ]
     
+    # Determine active step index based on continuous percentage
+    if percent < 15: active_step_idx = 0
+    elif percent < 30: active_step_idx = 1
+    elif percent < 45: active_step_idx = 2
+    elif percent < 60: active_step_idx = 3
+    elif percent < 80: active_step_idx = 4
+    elif percent < 92: active_step_idx = 5
+    elif percent < 100: active_step_idx = 6
+    else: active_step_idx = 7
+
     html = f"""
     <div class="processing-card">
-        <div class="proc-percent">{percent}%</div>
-        <div class="proc-title">Processing Video...</div>
+        <div class="proc-header">
+            <span class="proc-title">Processing Video...</span>
+            <span class="proc-percent">{percent}%</span>
+        </div>
         <div class="proc-subtitle">Please do not refresh or close this tab</div>
-        <div style="clear: both;"></div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: {percent}%;"></div>
+        </div>
     """
     
     for idx, step_text in enumerate(steps):
@@ -211,18 +240,18 @@ def process_single_video_with_ui(input_path, output_path, target_height, bitrate
     orig_w, orig_h = video.size
     aspect_ratio = orig_w / float(orig_h)
 
-    # Step 0: Initializing
-    ui_container.markdown(render_processing_card(12, 0), unsafe_allow_html=True)
-    time.sleep(0.5)
+    # 1% to 20% Initializing
+    for p in range(1, 21):
+        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
+        time.sleep(0.02)
 
-    # Step 1: Metadata
-    ui_container.markdown(render_processing_card(25, 1), unsafe_allow_html=True)
+    # Cut clips & effects processing (21% to 50%)
     for edit_idx in range(1, 16):
         subclip = video.subclip((edit_idx - 1) * cut_duration, edit_idx * cut_duration)
         clips.append(apply_custom_effects(subclip, edit_idx))
+        p = 20 + int((edit_idx / 15.0) * 30)
+        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
 
-    # Step 2: Fingerprint
-    ui_container.markdown(render_processing_card(42, 2), unsafe_allow_html=True)
     final_clip = concatenate_videoclips(clips)
 
     if orig_h != target_height:
@@ -230,24 +259,18 @@ def process_single_video_with_ui(input_path, output_path, target_height, bitrate
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-    # Step 3: Perceptual hash
-    ui_container.markdown(render_processing_card(60, 3), unsafe_allow_html=True)
-    time.sleep(0.5)
+    # 51% to 75% Encoding setup
+    for p in range(51, 76):
+        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
+        time.sleep(0.02)
 
-    # Step 4: Encoding pipeline
-    ui_container.markdown(render_processing_card(78, 4), unsafe_allow_html=True)
+    # Video write execution
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
 
-    # Step 5: Re-muxing
-    ui_container.markdown(render_processing_card(88, 5), unsafe_allow_html=True)
-    time.sleep(0.4)
-
-    # Step 6: Verifying
-    ui_container.markdown(render_processing_card(96, 6), unsafe_allow_html=True)
-    time.sleep(0.4)
-
-    # Step 7: Complete
-    ui_container.markdown(render_processing_card(100, 7), unsafe_allow_html=True)
+    # 76% to 100% Finalizing & Re-muxing
+    for p in range(76, 101):
+        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
+        time.sleep(0.03)
 
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
@@ -308,7 +331,7 @@ else:
     
     tabs = st.tabs(tab_list)
 
-    # 1. STUDIO PROCESSOR (WITH NEW PROCESS STEPPER UI)
+    # 1. STUDIO PROCESSOR
     with tabs[0]:
         uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
         if uploaded_file:
@@ -325,6 +348,11 @@ else:
                 if user_coins < required_coins and not st.session_state.is_admin:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye. Aapke paas sirf {user_coins} Coins hain.")
                 else:
+                    # DEDUCT COINS IMMEDIATELY BEFORE PROCESSING
+                    if not st.session_state.is_admin and required_coins > 0:
+                        db_data["users"][current_user] = user_coins - required_coins
+                        save_db(db_data)
+
                     if not os.path.exists("exports"): os.makedirs("exports")
                     
                     ui_container = st.empty()
@@ -334,9 +362,6 @@ else:
                     with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                     
                     process_single_video_with_ui(temp_in, out_path, target_height, bitrate, ui_container)
-                    
-                    if not st.session_state.is_admin and required_coins > 0:
-                        db_data["users"][current_user] = user_coins - required_coins
                     
                     if current_user not in db_data["history"]: db_data["history"][current_user] = []
                     db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
