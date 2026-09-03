@@ -228,7 +228,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, waterm
         final_clip = CompositeVideoClip([final_clip, logo])
 
     update_progress(85, "⚙️ Rendering & Encoding Final Output...", progress_bar, start_time)
-    final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
+    final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=2, logger=None)
     
     update_progress(100, "✅ Video Processing Complete!", progress_bar, start_time)
 
