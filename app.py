@@ -1,5 +1,5 @@
 import streamlit as st
-import time, json, os, hashlib
+import time, json, os, hashlib, gc, glob
 import numpy as np
 import PIL.Image
 from datetime import datetime, timedelta
@@ -22,6 +22,7 @@ DB_FILE = "database.json"
 TELEGRAM_SUPPORT_URL = "https://t.me/+Yhr7ZJWcqBwyNmFl"
 UPI_ID_TEXT = "cinepoliis@ibl"
 BG_IMAGE_URL = "https://i.postimg.cc/P5P1CkHY/no.png"
+EXPORT_DIR = "exports"
 
 def hash_text(text):
     return hashlib.sha256(text.encode()).hexdigest()
@@ -29,6 +30,30 @@ def hash_text(text):
 ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
+
+# Automated Cleanup Function (Purani files aur RAM clear karne ke liye)
+def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
+    # Temp input file delete karein
+    if temp_file_path and os.path.exists(temp_file_path):
+        try:
+            os.remove(temp_file_path)
+        except Exception:
+            pass
+            
+    # Purani exports files clean karein (Storage Optimization)
+    if os.path.exists(EXPORT_DIR):
+        now_time = time.time()
+        for file_path in glob.glob(os.path.join(EXPORT_DIR, "*")):
+            if os.path.isfile(file_path):
+                file_age_hours = (now_time - os.path.getmtime(file_path)) / 3600
+                if file_age_hours > max_age_hours:
+                    try:
+                        os.remove(file_path)
+                    except Exception:
+                        pass
+                        
+    # Garbage collector call karke RAM free karein
+    gc.collect()
 
 def load_db():
     if not os.path.exists(DB_FILE):
@@ -51,7 +76,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# CSS Styling (Compact UI Box & Reduced Text Sizes)
+# Custom CSS Styling
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -84,71 +109,6 @@ st.markdown(f"""
     [data-testid="stMetricLabel"] {{
         font-size: 0.85rem !important;
     }}
-
-    /* Compact Processing Card Styling */
-    .processing-card {{
-        background-color: #0d1117;
-        border: 1px solid #21262d;
-        border-radius: 10px;
-        padding: 12px 18px;
-        max-width: 380px;
-        margin: 5px auto;
-        color: #ffffff;
-        font-family: sans-serif;
-    }}
-    .proc-header {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
-    }}
-    .proc-title {{
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #ffffff;
-    }}
-    .proc-subtitle {{
-        color: #8b949e;
-        font-size: 0.75rem;
-        margin-bottom: 8px;
-    }}
-    .proc-percent {{
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: #818cf8;
-    }}
-    .progress-bar-bg {{
-        width: 100%;
-        background-color: #21262d;
-        border-radius: 6px;
-        height: 8px;
-        overflow: hidden;
-        margin-bottom: 10px;
-    }}
-    .progress-bar-fill {{
-        height: 100%;
-        background: linear-gradient(90deg, #6366f1, #a855f7);
-        width: 0%;
-        transition: width 0.1s ease-in-out;
-    }}
-    .step-item {{
-        display: flex;
-        align-items: center;
-        margin-bottom: 4px;
-        font-size: 0.78rem;
-        color: #484f58;
-    }}
-    .step-item.active {{
-        color: #ffffff;
-        font-weight: 600;
-    }}
-    .step-item.completed {{
-        color: #3fb950;
-    }}
-    .step-icon {{
-        margin-right: 8px;
-        font-size: 0.85rem;
-    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -178,61 +138,12 @@ def apply_custom_effects(clip, edit_num):
         if hasattr(clip, 'speedx'): clip = clip.speedx(1.15)
     return clip
 
-def render_compact_processing_card(percent):
-    steps = [
-        "Initializing AI engine...",
-        "Extracting metadata & EXIF data...",
-        "Content fingerprint analysis...",
-        "Perceptual hash normalization...",
-        "Deep-clean encoding pipeline...",
-        "Re-muxing stream (H.264/AAC)...",
-        "Verifying output integrity...",
-        "Complete"
-    ]
+def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
+    start_time = time.time()
     
-    # Determine active step index based on continuous percentage
-    if percent < 15: active_step_idx = 0
-    elif percent < 30: active_step_idx = 1
-    elif percent < 45: active_step_idx = 2
-    elif percent < 60: active_step_idx = 3
-    elif percent < 80: active_step_idx = 4
-    elif percent < 92: active_step_idx = 5
-    elif percent < 100: active_step_idx = 6
-    else: active_step_idx = 7
-
-    html = f"""
-    <div class="processing-card">
-        <div class="proc-header">
-            <span class="proc-title">Processing Video...</span>
-            <span class="proc-percent">{percent}%</span>
-        </div>
-        <div class="proc-subtitle">Please do not refresh or close this tab</div>
-        <div class="progress-bar-bg">
-            <div class="progress-bar-fill" style="width: {percent}%;"></div>
-        </div>
-    """
+    status_text_holder.info("🎬 Video load ho raha hai... (Calculating ETA)")
+    progress_bar.progress(5)
     
-    for idx, step_text in enumerate(steps):
-        if idx < active_step_idx:
-            status_class = "completed"
-            icon = "✔️"
-        elif idx == active_step_idx:
-            status_class = "active"
-            icon = "🔄"
-        else:
-            status_class = "pending"
-            icon = "⚪"
-            
-        html += f"""
-        <div class="step-item {status_class}">
-            <span class="step-icon">{icon}</span> {step_text}
-        </div>
-        """
-        
-    html += "</div>"
-    return html
-
-def process_single_video_with_ui(input_path, output_path, target_height, bitrate, ui_container):
     video = VideoFileClip(input_path)
     cut_duration = video.duration / 15.0
     clips = []
@@ -240,17 +151,9 @@ def process_single_video_with_ui(input_path, output_path, target_height, bitrate
     orig_w, orig_h = video.size
     aspect_ratio = orig_w / float(orig_h)
 
-    # 1% to 20% Initializing
-    for p in range(1, 21):
-        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
-        time.sleep(0.02)
-
-    # Cut clips & effects processing (21% to 50%)
     for edit_idx in range(1, 16):
         subclip = video.subclip((edit_idx - 1) * cut_duration, edit_idx * cut_duration)
         clips.append(apply_custom_effects(subclip, edit_idx))
-        p = 20 + int((edit_idx / 15.0) * 30)
-        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
 
     final_clip = concatenate_videoclips(clips)
 
@@ -259,19 +162,34 @@ def process_single_video_with_ui(input_path, output_path, target_height, bitrate
         if new_w % 2 != 0: new_w += 1
         final_clip = final_clip.resize(newsize=(new_w, target_height))
 
-    # 51% to 75% Encoding setup
-    for p in range(51, 76):
-        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
-        time.sleep(0.02)
+    estimated_total = max(20, int(video.duration * 1.5))
 
-    # Video write execution
+    for pct in range(10, 85, 5):
+        elapsed = int(time.time() - start_time)
+        rem_sec = max(1, estimated_total - elapsed)
+        status_text_holder.warning(f"⚡ Processing Effects & Rescaling... | ⏳ Remaining Time: {rem_sec} sec left (Elapsed: {elapsed}s)")
+        progress_bar.progress(pct)
+        time.sleep(0.3)
+
+    status_text_holder.warning("⚙️ Video Render ho raha hai... Finalizing file...")
+    progress_bar.progress(85)
+    
+    # Video Render
     final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
+    
+    # Memory Free Process: MoviePy instances close karna
+    try:
+        video.close()
+        final_clip.close()
+        for c in clips: c.close()
+    except Exception:
+        pass
 
-    # 76% to 100% Finalizing & Re-muxing
-    for p in range(76, 101):
-        ui_container.markdown(render_compact_processing_card(p), unsafe_allow_html=True)
-        time.sleep(0.03)
+    total_elapsed = int(time.time() - start_time)
+    progress_bar.progress(100)
+    status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
 
+# Main Layout Header
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 with col_support: st.markdown(f'<a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">✈️ Telegram Support</a>', unsafe_allow_html=True)
@@ -302,6 +220,7 @@ else:
     db_data = load_db()
     user_coins = db_data["users"].get(current_user, 10) if not st.session_state.is_admin else 99999
     
+    # Check Active Subscription Status
     sub_info = db_data.get("subscriptions", {}).get(current_user, None)
     expiry_display = "No Active Plan"
     if sub_info:
@@ -348,27 +267,29 @@ else:
                 if user_coins < required_coins and not st.session_state.is_admin:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye. Aapke paas sirf {user_coins} Coins hain.")
                 else:
-                    # DEDUCT COINS IMMEDIATELY BEFORE PROCESSING
-                    if not st.session_state.is_admin and required_coins > 0:
-                        db_data["users"][current_user] = user_coins - required_coins
-                        save_db(db_data)
-
-                    if not os.path.exists("exports"): os.makedirs("exports")
+                    if not os.path.exists(EXPORT_DIR): os.makedirs(EXPORT_DIR)
+                    p_bar = st.progress(0)
+                    status_text_holder = st.empty()
                     
-                    ui_container = st.empty()
+                    temp_in = f"temp_in_{int(time.time())}.mp4"
+                    out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
                     
-                    temp_in = "temp_input.mp4"
-                    out_path = f"exports/{int(time.time())}_{uploaded_file.name}"
                     with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                     
-                    process_single_video_with_ui(temp_in, out_path, target_height, bitrate, ui_container)
+                    process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
+                    
+                    # Deduct Coins & Save DB
+                    if not st.session_state.is_admin and required_coins > 0:
+                        db_data["users"][current_user] = user_coins - required_coins
                     
                     if current_user not in db_data["history"]: db_data["history"][current_user] = []
                     db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                     save_db(db_data)
 
-                    st.balloons()
-                    st.success("🎉 Video Processing & Rendering Complete!")
+                    # Auto Cleanup invoke karein (RAM release + temp delete)
+                    auto_cleanup_storage_and_memory(temp_file_path=temp_in)
+
+                    st.success("🎉 Video Render Ho Gaya Hai!")
                     
                     with open(out_path, "rb") as f:
                         st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
@@ -468,6 +389,8 @@ else:
             if os.path.exists(item['path']):
                 with open(item['path'], "rb") as f:
                     st.download_button("📥 Download Again", f, file_name=f"edited_{item['filename']}", key=item['path'])
+            else:
+                st.caption("⚠️ File cleanup System ke karan storage se delete ho chuki hai.")
             st.divider()
 
     # 5. ADMIN PANEL
