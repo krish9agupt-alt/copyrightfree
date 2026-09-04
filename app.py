@@ -80,38 +80,77 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS Styling
+# Custom CSS Styling (Visibility & Glassmorphism Contrast Fix)
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
+    
     .stApp {{
         background-image: url("{BG_IMAGE_URL}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
-        color: #FFFFFF;
+        color: #FFFFFF !important;
     }}
+    
+    /* Main Content Container Glassmorphism Effect */
     .stApp > div {{
-        background: rgba(11, 12, 16, 0.85);
+        background: rgba(0, 0, 0, 0.85) !important;
         padding: 20px;
-        border-radius: 10px;
+        border-radius: 15px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
     }}
+    
+    /* Global Text Visibility & High Contrast Fix */
+    p, span, label, div, li, h1, h2, h3, h4 {{
+        color: #FFFFFF !important;
+        text-shadow: 1px 1px 2px #000000 !important;
+    }}
+    
+    /* Main Header Styling */
     .main-header {{
         text-align: left; font-weight: 900; font-size: 2.2rem;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
+    
+    /* Streamlit Tabs Text Visibility Fix */
+    button[data-baseweb="tab"] {{
+        color: #FFFFFF !important;
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        margin-right: 5px !important;
+    }}
+    
+    button[aria-selected="true"] {{
+        background-color: #FFD700 !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+    }}
+    
+    button[aria-selected="true"] p {{
+        color: #000000 !important;
+        text-shadow: none !important;
+    }}
+    
+    /* Support Button Fix */
     .tg-support-btn {{
         float: right; background: linear-gradient(90deg, #0088cc, #00c6ff);
         color: white !important; padding: 8px 16px; border-radius: 20px;
         text-decoration: none; font-weight: bold;
     }}
+    
+    /* Metric Styling Fix */
     [data-testid="stMetricValue"] {{
         font-size: 1.1rem !important;
         font-weight: 600 !important;
+        color: #FFD700 !important;
     }}
     [data-testid="stMetricLabel"] {{
         font-size: 0.85rem !important;
+        color: #FFFFFF !important;
     }}
     </style>
 """, unsafe_allow_html=True)
