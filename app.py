@@ -1,5 +1,5 @@
 import streamlit as st
-import time, json, os, hashlib, gc, glob
+import time, json, os, hashlib, gc, glob, threading
 import numpy as np
 import PIL.Image
 from datetime import datetime, timedelta
@@ -16,6 +16,13 @@ except ImportError:
     from moviepy import VideoFileClip, concatenate_videoclips
     import moviepy.video.fx as vfx
 
+# Global Render Lock System (Single User At A Time Execution)
+@st.cache_resource
+def get_render_lock():
+    return threading.Lock()
+
+RENDER_LOCK = get_render_lock()
+
 st.set_page_config(page_title="No Copyright Video Studio Pro", page_icon="🎬", layout="wide")
 
 DB_FILE = "database.json"
@@ -31,16 +38,14 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# Automated Cleanup Function (Purani files aur RAM clear karne ke liye)
+# Automated Cleanup Function (Storage and Memory Optimization)
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
-    # Temp input file delete karein
     if temp_file_path and os.path.exists(temp_file_path):
         try:
             os.remove(temp_file_path)
         except Exception:
             pass
             
-    # Purani exports files clean karein (Storage Optimization)
     if os.path.exists(EXPORT_DIR):
         now_time = time.time()
         for file_path in glob.glob(os.path.join(EXPORT_DIR, "*")):
@@ -52,7 +57,6 @@ def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
                     except Exception:
                         pass
                         
-    # Garbage collector call karke RAM free karein
     gc.collect()
 
 def load_db():
@@ -174,10 +178,17 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     status_text_holder.warning("⚙️ Video Render ho raha hai... Finalizing file...")
     progress_bar.progress(85)
     
-    # Video Render
-    final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=4, logger=None)
+    # Low Memory Optimization Render Parameters
+    final_clip.write_videofile(
+        output_path, 
+        codec="libx264", 
+        audio_codec="aac", 
+        bitrate=bitrate, 
+        preset="ultrafast", 
+        threads=1, 
+        logger=None
+    )
     
-    # Memory Free Process: MoviePy instances close karna
     try:
         video.close()
         final_clip.close()
@@ -220,7 +231,6 @@ else:
     db_data = load_db()
     user_coins = db_data["users"].get(current_user, 10) if not st.session_state.is_admin else 99999
     
-    # Check Active Subscription Status
     sub_info = db_data.get("subscriptions", {}).get(current_user, None)
     expiry_display = "No Active Plan"
     if sub_info:
@@ -267,32 +277,43 @@ else:
                 if user_coins < required_coins and not st.session_state.is_admin:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye. Aapke paas sirf {user_coins} Coins hain.")
                 else:
-                    if not os.path.exists(EXPORT_DIR): os.makedirs(EXPORT_DIR)
-                    p_bar = st.progress(0)
-                    status_text_holder = st.empty()
-                    
-                    temp_in = f"temp_in_{int(time.time())}.mp4"
-                    out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
-                    
-                    with open(temp_in, "wb") as f: f.write(uploaded_file.read())
-                    
-                    process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
-                    
-                    # Deduct Coins & Save DB
-                    if not st.session_state.is_admin and required_coins > 0:
-                        db_data["users"][current_user] = user_coins - required_coins
-                    
-                    if current_user not in db_data["history"]: db_data["history"][current_user] = []
-                    db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-                    save_db(db_data)
+                    if RENDER_LOCK.locked():
+                        st.warning("⏳ Server busy hai! Aap Queue me hain. Estimated Waiting Time: ~1-2 Minutes.")
 
-                    # Auto Cleanup invoke karein (RAM release + temp delete)
-                    auto_cleanup_storage_and_memory(temp_file_path=temp_in)
+                    with RENDER_LOCK:
+                        if not os.path.exists(EXPORT_DIR): os.makedirs(EXPORT_DIR)
+                        p_bar = st.progress(0)
+                        status_text_holder = st.empty()
+                        
+                        temp_in = f"temp_in_{int(time.time())}.mp4"
+                        out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
+                        
+                        try:
+                            with open(temp_in, "wb") as f: f.write(uploaded_file.read())
+                            
+                            process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
+                            
+                            if not st.session_state.is_admin and required_coins > 0:
+                                db_data["users"][current_user] = user_coins - required_coins
+                            
+                            if current_user not in db_data["history"]: db_data["history"][current_user] = []
+                            db_data["history"][current_user].append({
+                                "filename": uploaded_file.name, 
+                                "path": out_path, 
+                                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            })
+                            save_db(db_data)
 
-                    st.success("🎉 Video Render Ho Gaya Hai!")
-                    
-                    with open(out_path, "rb") as f:
-                        st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
+                            st.success("🎉 Video Render Ho Gaya Hai! Unique file aapki Download History me sync ho chuki hai.")
+                            
+                            with open(out_path, "rb") as f:
+                                st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
+
+                        except Exception as e:
+                            st.error(f"Processing me error aaya: {e}")
+
+                        finally:
+                            auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
     # 2. BUY COINS & PLANS TAB
     with tabs[1]:
