@@ -358,7 +358,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (HTTP 403 & FORMAT FIXED)
+    # 2. YOUTUBE VIDEO CLIPPER (STREAMLIT CLOUD BLOCK BYPASS)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -380,26 +380,25 @@ else:
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             
-                            # HTTP 403 FORBIDDEN & CLIENT SPOOFING FIX
+                            # TVHTML5 & iOS EMBED BYPASS ENGINES
                             ydl_opts = {
-                                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                                'format': 'b[ext=mp4]/best[ext=mp4]/best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
                                 'nocheckcertificate': True,
                                 'geo_bypass': True,
-                                'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                    'Accept-Language': 'en-us,en;q=0.5',
-                                },
+                                'force_generic_extractor': False,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android', 'web'],
+                                        'player_client': ['tvhtml5', 'ios', 'mweb'],
+                                        'skip': ['dash', 'hls']
                                     }
-                                },
-                                'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+                                }
                             }
+
+                            if os.path.exists('cookies.txt'):
+                                ydl_opts['cookiefile'] = 'cookies.txt'
 
                             with YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(yt_url.strip(), download=True)
