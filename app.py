@@ -172,19 +172,22 @@ def manual_zoom(clip, zoom_factor):
         return np.array(img_pil.resize((w, h), resizer))
     return clip.fl_image(zoom_frame)
 
-def apply_custom_effects(clip, edit_num):
+def apply_custom_effects(clip, edit_num=1):
     if edit_num in [2, 8]: clip = manual_zoom(clip, 1.10)
-    elif edit_num == 3: clip = clip.speedx(1.2) if hasattr(clip, 'speedx') else clip
-    elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.90) if hasattr(vfx, 'colorx') else clip
-    elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.20) if hasattr(vfx, 'colorx') else clip
+    elif edit_num == 3: clip = clip.speedx(1.05) if hasattr(clip, 'speedx') else clip
+    elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.95) if hasattr(vfx, 'colorx') else clip
+    elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.10) if hasattr(vfx, 'colorx') else clip
     elif edit_num == 6: clip = clip.fl_image(lambda img: img[:, ::-1])
-    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.10) if hasattr(vfx, 'colorx') else clip
-    elif edit_num == 9: clip = clip.speedx(1.15) if hasattr(clip, 'speedx') else clip
+    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.05) if hasattr(vfx, 'colorx') else clip
+    elif edit_num == 9: clip = clip.speedx(1.08) if hasattr(clip, 'speedx') else clip
     elif edit_num == 10: clip = manual_zoom(clip, 1.05)
-    elif edit_num == 12: clip = manual_zoom(clip, 1.12)
+    elif edit_num == 12: clip = manual_zoom(clip, 1.08)
     elif edit_num == 14:
         clip = clip.fl_image(lambda img: img[:, ::-1])
-        if hasattr(clip, 'speedx'): clip = clip.speedx(1.15)
+        if hasattr(clip, 'speedx'): clip = clip.speedx(1.05)
+    else:
+        clip = manual_zoom(clip, 1.05)
+        if hasattr(vfx, 'colorx'): clip = clip.fx(vfx.colorx, 1.05)
     return clip
 
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
@@ -359,7 +362,7 @@ else:
 
     # 2. YOUTUBE VIDEO CLIPPER (/api/clip)
     elif selected_menu == "✂️ YouTube Video Clipper":
-        st.subheader("✂️ YouTube Video Downloader & Auto/Custom Clipper")
+        st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
             st.error("⚠️ `yt-dlp` installed nahi hai. Pip command se install karein: `pip install yt-dlp`")
         else:
@@ -371,15 +374,15 @@ else:
             else:
                 timestamps_input = st.text_input("Timestamps (format: 0-10, 15-30):", value="0-10, 15-30")
 
-            if st.button("📥 Download & Cut YouTube Video"):
+            if st.button("📥 Download, Edit & Cut YouTube Video"):
                 if not yt_url.strip():
                     st.error("⚠️ Pehle YouTube Video ka Link daalein.")
                 else:
-                    with st.spinner("⏳ YouTube video download aur process ho raha hai..."):
+                    with st.spinner("⏳ YouTube video download, anti-copyright edit aur process ho raha hai..."):
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             ydl_opts = {
-                                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                                'format': 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True
                             }
@@ -398,9 +401,13 @@ else:
                                 while curr < total_dur:
                                     end = min(curr + interval_sec, total_dur)
                                     subclip = video.subclip(curr, end)
+                                    
+                                    # Anti-Copyright Edit Apply
+                                    edited_subclip = apply_custom_effects(subclip, count)
+                                    
                                     out_clip_path = f"{EXPORT_DIR}/yt_clip_{count}_{int(time.time())}.mp4"
-                                    subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                    generated_clips.append((f"Clip_{count}.mp4", out_clip_path))
+                                    edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+                                    generated_clips.append((f"Edited_Clip_{count}.mp4", out_clip_path))
                                     curr += interval_sec
                                     count += 1
                             else:
@@ -408,14 +415,18 @@ else:
                                 for idx, r in enumerate(ranges):
                                     start, end = float(r[0]), float(r[1])
                                     subclip = video.subclip(start, min(end, video.duration))
+                                    
+                                    # Anti-Copyright Edit Apply
+                                    edited_subclip = apply_custom_effects(subclip, idx + 1)
+                                    
                                     out_clip_path = f"{EXPORT_DIR}/yt_custom_{idx+1}_{int(time.time())}.mp4"
-                                    subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                    generated_clips.append((f"Custom_Clip_{idx+1}.mp4", out_clip_path))
+                                    edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+                                    generated_clips.append((f"Edited_Custom_Clip_{idx+1}.mp4", out_clip_path))
 
                             video.close()
                             if os.path.exists(temp_yt_file): os.remove(temp_yt_file)
 
-                            st.success(f"🎉 YouTube Video Se Total {len(generated_clips)} Clips Tyar Ho Gaye Hain!")
+                            st.success(f"🎉 YouTube Video Se Total {len(generated_clips)} Anti-Copyright Edited Clips Tayar Ho Gaye Hain!")
                             for name, path in generated_clips:
                                 with open(path, "rb") as f:
                                     st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
