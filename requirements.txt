@@ -3,5 +3,4 @@ moviepy<2.0.0
 numpy
 imageio
 imageio-ffmpeg
-yt-dlp--upgrade
-ffmpeg
+yt-dlp
