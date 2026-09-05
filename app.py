@@ -22,7 +22,7 @@ try:
 except ImportError:
     HAS_YTDLP = False
 
-# Global Render Lock System (Single User At A Time Execution)
+# Global Render Lock System
 @st.cache_resource
 def get_render_lock():
     return threading.Lock()
@@ -88,7 +88,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS Styling (High Contrast Visibility & Dark Cards)
+# Custom CSS Styling
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -120,7 +120,6 @@ st.markdown(f"""
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
     
-    /* Vertical Radio Menu Styling */
     div[data-testid="stRadio"] > label {{
         font-weight: bold !important;
         font-size: 1.1rem !important;
@@ -359,7 +358,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (COOKIES INTEGRATED FIX)
+    # 2. YOUTUBE VIDEO CLIPPER (FIXED FORMAT & COOKIES)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -381,13 +380,14 @@ else:
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             
+                            # UPDATED CONFIG: Cookies + Fallback Format Fix
                             ydl_opts = {
-                                'format': 'best',
+                                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
                                 'nocheckcertificate': True,
-                                'cookiefile': 'cookies.txt',  # Exact cookies file usage
+                                'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
                             }
 
                             with YoutubeDL(ydl_opts) as ydl:
