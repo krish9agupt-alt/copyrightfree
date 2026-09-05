@@ -4,3 +4,4 @@ numpy
 imageio
 imageio-ffmpeg
 yt-dlp
+ffmpeg
