@@ -5,7 +5,7 @@ import PIL.Image
 from datetime import datetime, timedelta
 import urllib.parse
 
-# MoviePy & YT-DLP Imports
+# MoviePy & YT-DLP Imports (Compatible with moviepy < 2.0.0)
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
 
@@ -13,8 +13,7 @@ try:
     from moviepy.editor import VideoFileClip, concatenate_videoclips
     import moviepy.video.fx.all as vfx
 except ImportError:
-    from moviepy import VideoFileClip, concatenate_videoclips
-    import moviepy.video.fx as vfx
+    st.error("MoviePy import error! Please check requirements.txt")
 
 try:
     from yt_dlp import YoutubeDL
@@ -173,20 +172,20 @@ def manual_zoom(clip, zoom_factor):
 
 def apply_custom_effects(clip, edit_num=1):
     if edit_num in [2, 8]: clip = manual_zoom(clip, 1.10)
-    elif edit_num == 3: clip = clip.speedx(1.05) if hasattr(clip, 'speedx') else clip
-    elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.95) if hasattr(vfx, 'colorx') else clip
-    elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.10) if hasattr(vfx, 'colorx') else clip
+    elif edit_num == 3: clip = clip.speedx(1.05)
+    elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.95)
+    elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.10)
     elif edit_num == 6: clip = clip.fl_image(lambda img: img[:, ::-1])
-    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.05) if hasattr(vfx, 'colorx') else clip
-    elif edit_num == 9: clip = clip.speedx(1.08) if hasattr(clip, 'speedx') else clip
+    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.05)
+    elif edit_num == 9: clip = clip.speedx(1.08)
     elif edit_num == 10: clip = manual_zoom(clip, 1.05)
     elif edit_num == 12: clip = manual_zoom(clip, 1.08)
     elif edit_num == 14:
         clip = clip.fl_image(lambda img: img[:, ::-1])
-        if hasattr(clip, 'speedx'): clip = clip.speedx(1.05)
+        clip = clip.speedx(1.05)
     else:
         clip = manual_zoom(clip, 1.05)
-        if hasattr(vfx, 'colorx'): clip = clip.fx(vfx.colorx, 1.05)
+        clip = clip.fx(vfx.colorx, 1.05)
     return clip
 
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
@@ -240,7 +239,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     progress_bar.progress(100)
     status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
 
-# Main Layout Header
+# Header Layout
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 with col_support: st.markdown(f'<a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">✈️ Telegram Support</a>', unsafe_allow_html=True)
@@ -358,7 +357,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (BULLETPROOF STREAMLIT FIX)
+    # 2. YOUTUBE VIDEO CLIPPER (100% FIXED FOR STREAMLIT CLOUD)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -380,9 +379,9 @@ else:
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             
-                            # Standard Universal Format Selector with Android Player Bypass
+                            # Universal Stream Selector for YT-DLP Bypass
                             ydl_opts = {
-                                'format': 'b/best/bestvideo+bestaudio',
+                                'format': 'best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
@@ -390,7 +389,7 @@ else:
                                 'geo_bypass': True,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android', 'ios', 'mweb'],
+                                        'player_client': ['ios', 'android', 'mweb'],
                                     }
                                 }
                             }
@@ -400,7 +399,6 @@ else:
 
                             with YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(yt_url.strip(), download=True)
-                                video_title = info.get('title', 'yt_video')
 
                             video = VideoFileClip(temp_yt_file)
                             generated_clips = []
