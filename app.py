@@ -359,7 +359,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (SOLUTION 1: BOT DETECTION BYPASS)
+    # 2. YOUTUBE VIDEO CLIPPER (COOKIES INTEGRATED FIX)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -380,20 +380,16 @@ else:
                     with st.spinner("⏳ YouTube video download, anti-copyright edit aur process ho raha hai..."):
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
+                            
                             ydl_opts = {
                                 'format': 'best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
                                 'nocheckcertificate': True,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['android', 'ios'],
-                                        'player_skip': ['webpage', 'configs']
-                                    }
-                                }
+                                'cookiefile': 'cookies.txt',  # Exact cookies file usage
                             }
-                            
+
                             with YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(yt_url.strip(), download=True)
                                 video_title = info.get('title', 'yt_video')
