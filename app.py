@@ -2,10 +2,11 @@ import streamlit as st
 import time, json, os, hashlib, gc, glob, threading
 import numpy as np
 import PIL.Image
-from datetime import datetime, timedelta
+from datetime import datetime
 import urllib.parse
 import urllib.request
 import re
+import yt_dlp
 
 # MoviePy Compatibility Patch
 if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -41,37 +42,54 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# 🚀 FAILSAFE YOUTUBE DOWNLOAD ENGINE (Bypasses 403 Forbidden Block)
+# 🚀 HYBRID YOUTUBE DOWNLOAD ENGINE (yt-dlp + Fallback Mirror API)
 def download_youtube_failsafe(youtube_url, output_path):
-    video_id = None
-    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})", youtube_url)
+    clean_url = youtube_url.strip()
+    match = re.search(r"(?:v=|\/|embed\/|shorts\/|youtu\.be\/)([0-9A-Za-z_-]{11})", clean_url)
+    
     if match:
         video_id = match.group(1)
-        
-    if not video_id:
-        raise Exception("Sahi YouTube URL daalein!")
+        clean_url = f"https://www.youtube.com/watch?v={video_id}"
+    else:
+        raise Exception("Sahi YouTube URL/Link daalein!")
 
-    # Invidious Mirrors Array
+    # 1. Primary Engine: YT-DLP
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best',
+        'outtmpl': output_path,
+        'quiet': True,
+        'no_warnings': True,
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'nocheckcertificate': True,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([clean_url])
+        if os.path.exists(output_path):
+            return True
+    except Exception:
+        pass
+
+    # 2. Fallback Engine: Mirror API Systems
     invidious_instances = [
-        "https://invidious.nerdvpn.de",
+        "https://api.piped.video",
+        "https://pipedapi.kavin.rocks",
         "https://inv.tux.pizza",
-        "https://invidious.projectsegfau.lt",
-        "https://invidious.drgns.space"
+        "https://invidious.nerdvpn.de"
     ]
     
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
     for instance in invidious_instances:
         try:
-            api_endpoint = f"{instance}/api/v1/videos/{video_id}"
+            api_endpoint = f"{instance}/streams/{video_id}"
             req = urllib.request.Request(api_endpoint, headers=headers)
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode())
-                
-                format_streams = [s for s in data.get("formatStreams", []) if "video/mp4" in s.get("type", "")]
-                if format_streams:
-                    download_url = format_streams[0]["url"]
-                    
+                streams = [s for s in data.get("videoStreams", []) if s.get("container") == "mp4"]
+                if streams:
+                    download_url = streams[0]["url"]
                     dl_req = urllib.request.Request(download_url, headers=headers)
                     with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
                         out_file.write(dl_resp.read())
@@ -79,9 +97,9 @@ def download_youtube_failsafe(youtube_url, output_path):
         except Exception:
             continue
 
-    raise Exception("Sabhi Mirror Servers busy hain. Kripya thodi der baad try karein.")
+    raise Exception("Video download nahi ho paa raha hai. Browser se direct full link (youtube.com/watch?v=...) copy karke try karein.")
 
-# Automated Cleanup System
+# Storage Cleanup System
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
     if temp_file_path and os.path.exists(temp_file_path):
         try: os.remove(temp_file_path)
@@ -117,7 +135,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS
+# Custom CSS Styling
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -154,7 +172,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Helper Editing Functions
+# Helper Video Functions
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
         h, w, c = image.shape
@@ -228,7 +246,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     progress_bar.progress(100)
     status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
 
-# Top Bar
+# Header Bar
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 with col_support: st.markdown(f'<a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">✈️ Telegram Support</a>', unsafe_allow_html=True)
@@ -320,7 +338,7 @@ else:
                         except Exception as e: st.error(f"Error aaya: {e}")
                         finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE CLIPPER (FIXED FOR 403 FORBIDDEN)
+    # 2. YOUTUBE CLIPPER (HYBRID YT-DLP ENGINE)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         yt_url = st.text_input("Enter YouTube Video URL:")
@@ -335,7 +353,7 @@ else:
             if not yt_url.strip():
                 st.error("⚠️ Pehle YouTube Video ka Link daalein.")
             else:
-                with st.spinner("⏳ Mirror API Engine se video download ho raha hai..."):
+                with st.spinner("⏳ Video fetch aur process ho raha hai..."):
                     temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                     
                     try:
@@ -373,7 +391,7 @@ else:
                             video.close()
                             if os.path.exists(temp_yt_file): os.remove(temp_yt_file)
 
-                            st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Edited Clips Tayar Hain!")
+                            st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Clips Tayar Hain!")
                             for name, path in generated_clips:
                                 with open(path, "rb") as f:
                                     st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
