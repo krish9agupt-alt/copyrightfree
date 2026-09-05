@@ -41,72 +41,6 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# 🚀 FAILSAFE MULTI-ENGINE DOWNLOADER (Cobalt + Piped APIs)
-def download_youtube_failsafe(youtube_url, output_path):
-    clean_url = youtube_url.strip()
-    match = re.search(r"(?:v=|\/|embed\/|shorts\/|youtu\.be\/)([0-9A-Za-z_-]{11})", clean_url)
-    
-    if match:
-        video_id = match.group(1)
-        full_url = f"https://www.youtube.com/watch?v={video_id}"
-    else:
-        raise Exception("Sahi YouTube URL/Link daalein!")
-
-    # 1. Primary Engine: Cobalt API
-    cobalt_instances = [
-        "https://api.cobalt.tools/api/json",
-        "https://cobalt-api.kwippy.com/api/json",
-        "https://co.wuk.sh/api/json"
-    ]
-
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-
-    payload = json.dumps({
-        "url": full_url,
-        "vQuality": "720"
-    }).encode('utf-8')
-
-    for instance in cobalt_instances:
-        try:
-            req = urllib.request.Request(instance, data=payload, headers=headers, method='POST')
-            with urllib.request.urlopen(req, timeout=12) as response:
-                res_data = json.loads(response.read().decode())
-                dl_link = res_data.get("url")
-                
-                if dl_link:
-                    dl_req = urllib.request.Request(dl_link, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
-                        out_file.write(dl_resp.read())
-                    return True
-        except Exception:
-            continue
-
-    # 2. Fallback Engine: Piped API
-    piped_instances = [
-        "https://api.piped.video",
-        "https://pipedapi.kavin.rocks"
-    ]
-    for instance in piped_instances:
-        try:
-            piped_url = f"{instance}/streams/{video_id}"
-            req = urllib.request.Request(piped_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode())
-                streams = [s for s in data.get("videoStreams", []) if s.get("container") == "mp4" and not s.get("videoOnly")]
-                if streams:
-                    dl_req = urllib.request.Request(streams[0]["url"], headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
-                        out_file.write(dl_resp.read())
-                    return True
-        except Exception:
-            continue
-
-    raise Exception("Sabhi download engines busy hain. Kripya thodi der baad try karein.")
-
 # Storage Cleanup System
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
     if temp_file_path and os.path.exists(temp_file_path):
@@ -143,7 +77,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS
+# Custom CSS Styling
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -180,7 +114,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Helper Functions
+# Helper Video Effects Functions
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
         h, w, c = image.shape
@@ -210,6 +144,7 @@ def apply_custom_effects(clip, edit_num=1):
         clip = clip.fx(vfx.colorx, 1.05)
     return clip
 
+# Full Video Processor
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
     start_time = time.time()
     status_text_holder.info("🎬 Video load ho raha hai...")
@@ -305,109 +240,109 @@ else:
 
     st.divider()
 
-    menu_options = ["📹 Studio Processor", "✂️ YouTube Video Clipper", "📁 Output Library Manager", "🧹 Library Cleaner", "🪙 Buy Coins / Subscriptions", "💬 Chat with Admin"]
+    menu_options = ["📹 Studio Processor", "📁 Output Library Manager", "🧹 Library Cleaner", "🪙 Buy Coins / Subscriptions", "💬 Chat with Admin"]
     if st.session_state.is_admin: menu_options.append("👑 Admin Panel")
     
     selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
     st.divider()
 
-    # 1. STUDIO PROCESSOR
+    # 1. STUDIO PROCESSOR (WITH LONG VIDEO AUTO-CLIP & CUTTER)
     if selected_menu == "📹 Studio Processor":
-        uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
+        st.subheader("📹 Studio Processor & Long Video Auto Clipper")
+        
+        uploaded_file = st.file_uploader("Upload Long / Short Video File", type=["mp4", "mov", "mkv", "avi"])
+        
         if uploaded_file:
-            quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
-            res_config = {"720p HD (Free - 0 Coin)": (720, "4000k", 0), "1080p Full HD (5 Coins)": (1080, "12000k", 5), "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)}
-            target_height, bitrate, required_coins = res_config[quality_option]
+            process_mode = st.radio("Select Processing Mode:", ["1. Single Full Video Edit (Anti-Copyright)", "2. Long Video Auto-Clip / Trim Parts"])
+            
+            if process_mode == "1. Single Full Video Edit (Anti-Copyright)":
+                quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
+                res_config = {"720p HD (Free - 0 Coin)": (720, "4000k", 0), "1080p Full HD (5 Coins)": (1080, "12000k", 5), "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)}
+                target_height, bitrate, required_coins = res_config[quality_option]
 
-            if st.button("🚀 Render Video"):
-                if user_coins < required_coins and not st.session_state.is_admin:
-                    st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye.")
+                if st.button("🚀 Render Full Video"):
+                    if user_coins < required_coins and not st.session_state.is_admin:
+                        st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye.")
+                    else:
+                        with RENDER_LOCK:
+                            p_bar = st.progress(0)
+                            status_text_holder = st.empty()
+                            temp_in = f"temp_in_{int(time.time())}.mp4"
+                            out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
+                            
+                            try:
+                                with open(temp_in, "wb") as f: f.write(uploaded_file.read())
+                                process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
+                                
+                                if not st.session_state.is_admin and required_coins > 0:
+                                    db_data["users"][current_user] = user_coins - required_coins
+                                
+                                if current_user not in db_data["history"]: db_data["history"][current_user] = []
+                                db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                                save_db(db_data)
+
+                                st.success("🎉 Video Render Complete!")
+                                with open(out_path, "rb") as f:
+                                    st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
+                            except Exception as e: st.error(f"Error aaya: {e}")
+                            finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
+
+            elif process_mode == "2. Long Video Auto-Clip / Trim Parts":
+                clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
+                
+                if clip_mode == "Auto-Interval":
+                    interval_sec = st.number_input("Interval duration (Seconds):", min_value=5, max_value=600, value=10)
                 else:
+                    timestamps_input = st.text_input("Timestamps (format in seconds: 0-10, 15-30):", value="0-10, 15-30")
+
+                if st.button("✂️ Cut, Edit & Generate Anti-Copyright Clips"):
                     with RENDER_LOCK:
-                        p_bar = st.progress(0)
-                        status_text_holder = st.empty()
                         temp_in = f"temp_in_{int(time.time())}.mp4"
-                        out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
-                        
                         try:
                             with open(temp_in, "wb") as f: f.write(uploaded_file.read())
-                            process_single_video(temp_in, out_path, target_height, bitrate, p_bar, status_text_holder)
                             
-                            if not st.session_state.is_admin and required_coins > 0:
-                                db_data["users"][current_user] = user_coins - required_coins
-                            
-                            if current_user not in db_data["history"]: db_data["history"][current_user] = []
-                            db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-                            save_db(db_data)
+                            with st.spinner("⏳ Long video parts me cut aur process ho rahi hai..."):
+                                video = VideoFileClip(temp_in)
+                                generated_clips = []
 
-                            st.success("🎉 Video Render Complete!")
-                            with open(out_path, "rb") as f:
-                                st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
-                        except Exception as e: st.error(f"Error aaya: {e}")
-                        finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
+                                if clip_mode == "Auto-Interval":
+                                    total_dur = video.duration
+                                    curr = 0
+                                    count = 1
+                                    while curr < total_dur:
+                                        end = min(curr + interval_sec, total_dur)
+                                        subclip = video.subclip(curr, end)
+                                        edited_subclip = apply_custom_effects(subclip, count)
+                                        
+                                        out_clip_path = f"{EXPORT_DIR}/clip_{count}_{int(time.time())}.mp4"
+                                        edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+                                        generated_clips.append((f"Clip_{count}.mp4", out_clip_path))
+                                        curr += interval_sec
+                                        count += 1
+                                else:
+                                    ranges = [r.strip().split("-") for r in timestamps_input.split(",") if "-" in r]
+                                    for idx, r in enumerate(ranges):
+                                        start, end = float(r[0]), float(r[1])
+                                        subclip = video.subclip(start, min(end, video.duration))
+                                        edited_subclip = apply_custom_effects(subclip, idx + 1)
+                                        
+                                        out_clip_path = f"{EXPORT_DIR}/custom_clip_{idx+1}_{int(time.time())}.mp4"
+                                        edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+                                        generated_clips.append((f"Custom_Clip_{idx+1}.mp4", out_clip_path))
 
-    # 2. YOUTUBE CLIPPER
-    elif selected_menu == "✂️ YouTube Video Clipper":
-        st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
-        yt_url = st.text_input("Enter YouTube Video URL:")
-        clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
-        
-        if clip_mode == "Auto-Interval":
-            interval_sec = st.number_input("Interval duration (Seconds):", min_value=5, max_value=300, value=10)
-        else:
-            timestamps_input = st.text_input("Timestamps (format: 0-10, 15-30):", value="0-10, 15-30")
+                                video.close()
 
-        if st.button("📥 Download, Edit & Cut YouTube Video"):
-            if not yt_url.strip():
-                st.error("⚠️ Pehle YouTube Video ka Link daalein.")
-            else:
-                with st.spinner("⏳ Video download aur process ho raha hai..."):
-                    temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
-                    
-                    try:
-                        download_youtube_failsafe(yt_url.strip(), temp_yt_file)
-                        
-                        if os.path.exists(temp_yt_file):
-                            video = VideoFileClip(temp_yt_file)
-                            generated_clips = []
+                                st.success(f"🎉 Total {len(generated_clips)} Clips Tayar Hain!")
+                                for name, path in generated_clips:
+                                    with open(path, "rb") as f:
+                                        st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
 
-                            if clip_mode == "Auto-Interval":
-                                total_dur = video.duration
-                                curr = 0
-                                count = 1
-                                while curr < total_dur:
-                                    end = min(curr + interval_sec, total_dur)
-                                    subclip = video.subclip(curr, end)
-                                    edited_subclip = apply_custom_effects(subclip, count)
-                                    
-                                    out_clip_path = f"{EXPORT_DIR}/yt_clip_{count}_{int(time.time())}.mp4"
-                                    edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                    generated_clips.append((f"Edited_Clip_{count}.mp4", out_clip_path))
-                                    curr += interval_sec
-                                    count += 1
-                            else:
-                                ranges = [r.strip().split("-") for r in timestamps_input.split(",") if "-" in r]
-                                for idx, r in enumerate(ranges):
-                                    start, end = float(r[0]), float(r[1])
-                                    subclip = video.subclip(start, min(end, video.duration))
-                                    edited_subclip = apply_custom_effects(subclip, idx + 1)
-                                    
-                                    out_clip_path = f"{EXPORT_DIR}/yt_custom_{idx+1}_{int(time.time())}.mp4"
-                                    edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                    generated_clips.append((f"Edited_Custom_Clip_{idx+1}.mp4", out_clip_path))
+                        except Exception as e:
+                            st.error(f"❌ Error aaya: {e}")
+                        finally:
+                            auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-                            video.close()
-                            if os.path.exists(temp_yt_file): os.remove(temp_yt_file)
-
-                            st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Clips Tayar Hain!")
-                            for name, path in generated_clips:
-                                with open(path, "rb") as f:
-                                    st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
-
-                    except Exception as main_err:
-                        st.error(f"❌ Error: {main_err}")
-
-    # 3. OUTPUT LIBRARY MANAGER
+    # 2. OUTPUT LIBRARY MANAGER
     elif selected_menu == "📁 Output Library Manager":
         st.subheader("📁 Output Library Manager")
         if st.button("🔄 Refresh Output Library"): st.rerun()
@@ -428,7 +363,7 @@ else:
                             st.download_button("📥 Download", f, file_name=fname, key=f"lib_dl_{fname}")
                     st.divider()
 
-    # 4. LIBRARY CLEANER
+    # 3. LIBRARY CLEANER
     elif selected_menu == "🧹 Library Cleaner":
         st.subheader("🧹 System Storage & Library Cleaner")
         if st.button("🚨 Clear Entire Library"):
@@ -442,7 +377,7 @@ else:
             st.success(f"✅ Library Cleaned! Total {deleted_count} files removed.")
             st.rerun()
 
-    # 5. BUY COINS
+    # 4. BUY COINS
     elif selected_menu == "🪙 Buy Coins / Subscriptions":
         st.subheader("🪙 Recharge Coins & Buy Plans")
         st.write("UPI ID: " + UPI_ID_TEXT)
@@ -456,7 +391,7 @@ else:
                     save_db(db_data)
                     st.success("✅ Payment Request Submitted!")
 
-    # 6. CHAT WITH ADMIN
+    # 5. CHAT WITH ADMIN
     elif selected_menu == "💬 Chat with Admin":
         st.subheader("💬 Private Support Chat")
         with st.form("send_msg_form"):
@@ -469,7 +404,7 @@ else:
                     save_db(db_data)
                     st.rerun()
 
-    # 7. ADMIN PANEL
+    # 6. ADMIN PANEL
     elif selected_menu == "👑 Admin Panel" and st.session_state.is_admin:
         st.subheader("👑 Admin Console")
         pending_reqs = db_data.get("pending_requests", [])
