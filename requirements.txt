@@ -4,4 +4,4 @@ numpy
 imageio
 imageio-ffmpeg
 requests
-yt-dlp
+
