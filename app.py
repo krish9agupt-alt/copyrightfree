@@ -381,15 +381,15 @@ else:
                     with st.spinner("⏳ YouTube video download, anti-copyright edit aur process ho raha hai..."):
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
-                            ydl_opts = {
-                                'format': 'best[ext=mp4]/best',
-                                'outtmpl': temp_yt_file,
-                                'quiet': True,
-                                'no_warnings': True,
-                                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'referer': 'https://www.youtube.com/',
-                                'nocheckcertificate': True
-                            }
+                           ydl_opts = {
+                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                    'outmpl': temp_yt_file,
+                    'quiet': True,
+                    'no_warnings': True,
+                    'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'referer': 'https://www.youtube.com/',
+                    'nocheckcertificate': True
+                }
                             
                             with YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(yt_url.strip(), download=True)
