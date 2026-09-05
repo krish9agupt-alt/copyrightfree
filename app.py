@@ -358,7 +358,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (STREAMLIT CLOUD BLOCK BYPASS)
+    # 2. YOUTUBE VIDEO CLIPPER (BULLETPROOF STREAMLIT FIX)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -380,19 +380,17 @@ else:
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             
-                            # TVHTML5 & iOS EMBED BYPASS ENGINES
+                            # Standard Universal Format Selector with Android Player Bypass
                             ydl_opts = {
-                                'format': 'b[ext=mp4]/best[ext=mp4]/best',
+                                'format': 'b/best/bestvideo+bestaudio',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
                                 'nocheckcertificate': True,
                                 'geo_bypass': True,
-                                'force_generic_extractor': False,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['tvhtml5', 'ios', 'mweb'],
-                                        'skip': ['dash', 'hls']
+                                        'player_client': ['android', 'ios', 'mweb'],
                                     }
                                 }
                             }
