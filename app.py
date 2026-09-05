@@ -114,7 +114,9 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Helper Video Effects Functions
+# -------------------------------------------------------------
+# 🛡️ ADVANCED ANTI-COPYRIGHT ENGINE (ZOOM + SPEED + COLOR + FLIP)
+# -------------------------------------------------------------
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
         h, w, c = image.shape
@@ -126,28 +128,29 @@ def manual_zoom(clip, zoom_factor):
         return np.array(img_pil.resize((w, h), resizer))
     return clip.fl_image(zoom_frame)
 
-def apply_custom_effects(clip, edit_num=1):
-    if edit_num in [2, 8]: clip = manual_zoom(clip, 1.10)
-    elif edit_num == 3: clip = clip.speedx(1.05)
-    elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.95)
-    elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.10)
-    elif edit_num == 6: clip = clip.fl_image(lambda img: img[:, ::-1])
-    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.05)
-    elif edit_num == 9: clip = clip.speedx(1.08)
-    elif edit_num == 10: clip = manual_zoom(clip, 1.05)
-    elif edit_num == 12: clip = manual_zoom(clip, 1.08)
-    elif edit_num == 14:
-        clip = clip.fl_image(lambda img: img[:, ::-1])
-        clip = clip.speedx(1.05)
-    else:
-        clip = manual_zoom(clip, 1.05)
+def apply_anti_copyright_effects(clip, edit_num=1):
+    # Dynamic Multi-Layer Effects for 100% Copyright Bypass
+    if edit_num % 5 == 0:
+        clip = manual_zoom(clip, 1.08)
         clip = clip.fx(vfx.colorx, 1.05)
+    elif edit_num % 4 == 0:
+        clip = clip.speedx(1.04)
+        clip = clip.fx(vfx.colorx, 0.96)
+    elif edit_num % 3 == 0:
+        clip = manual_zoom(clip, 1.05)
+        clip = clip.fl_image(lambda img: img[:, ::-1])  # Horizontal Mirror Flip
+    elif edit_num % 2 == 0:
+        clip = clip.speedx(1.03)
+        clip = manual_zoom(clip, 1.06)
+    else:
+        clip = manual_zoom(clip, 1.07)
+        clip = clip.fx(vfx.colorx, 1.03)
     return clip
 
-# Full Video Processor
+# Full Single Video Processor
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
     start_time = time.time()
-    status_text_holder.info("🎬 Video load ho raha hai...")
+    status_text_holder.info("🎬 Video load aur analyze ho raha hai...")
     progress_bar.progress(5)
     
     video = VideoFileClip(input_path)
@@ -159,7 +162,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
 
     for edit_idx in range(1, 16):
         subclip = video.subclip((edit_idx - 1) * cut_duration, edit_idx * cut_duration)
-        clips.append(apply_custom_effects(subclip, edit_idx))
+        clips.append(apply_anti_copyright_effects(subclip, edit_idx))
 
     final_clip = concatenate_videoclips(clips)
 
@@ -172,7 +175,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
         progress_bar.progress(pct)
         time.sleep(0.2)
 
-    status_text_holder.warning("⚙️ Video Render ho raha hai...")
+    status_text_holder.warning("⚙️ Anti-Copyright Effects Apply & Render Ho Raha Hai...")
     progress_bar.progress(85)
     
     final_clip.write_videofile(
@@ -187,7 +190,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
 
     total_elapsed = int(time.time() - start_time)
     progress_bar.progress(100)
-    status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
+    status_text_holder.success(f"✅ Full Anti-Copyright Video Render Complete ({total_elapsed} sec)!")
 
 # Header Bar
 col_title, col_support = st.columns([3, 1])
@@ -246,21 +249,25 @@ else:
     selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
     st.divider()
 
-    # 1. STUDIO PROCESSOR (WITH LONG VIDEO AUTO-CLIP & CUTTER)
+    # 1. STUDIO PROCESSOR (ANTI-COPYRIGHT + CLIPPING MODE)
     if selected_menu == "📹 Studio Processor":
-        st.subheader("📹 Studio Processor & Long Video Auto Clipper")
+        st.subheader("📹 Anti-Copyright Studio & Video Auto-Clipper")
         
         uploaded_file = st.file_uploader("Upload Long / Short Video File", type=["mp4", "mov", "mkv", "avi"])
         
         if uploaded_file:
-            process_mode = st.radio("Select Processing Mode:", ["1. Single Full Video Edit (Anti-Copyright)", "2. Long Video Auto-Clip / Trim Parts"])
+            process_mode = st.radio("Select Processing Mode:", [
+                "1. Full Anti-Copyright Video Processor (Single File)", 
+                "2. Anti-Copyright Clipping & Trimming Mode (Multiple Parts)"
+            ])
             
-            if process_mode == "1. Single Full Video Edit (Anti-Copyright)":
+            # MODE 1: SINGLE FULL VIDEO EDIT
+            if process_mode == "1. Full Anti-Copyright Video Processor (Single File)":
                 quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
                 res_config = {"720p HD (Free - 0 Coin)": (720, "4000k", 0), "1080p Full HD (5 Coins)": (1080, "12000k", 5), "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)}
                 target_height, bitrate, required_coins = res_config[quality_option]
 
-                if st.button("🚀 Render Full Video"):
+                if st.button("🚀 Render Full Anti-Copyright Video"):
                     if user_coins < required_coins and not st.session_state.is_admin:
                         st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye.")
                     else:
@@ -283,11 +290,12 @@ else:
 
                                 st.success("🎉 Video Render Complete!")
                                 with open(out_path, "rb") as f:
-                                    st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
+                                    st.download_button("📥 Direct Download Anti-Copyright Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
                             except Exception as e: st.error(f"Error aaya: {e}")
                             finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-            elif process_mode == "2. Long Video Auto-Clip / Trim Parts":
+            # MODE 2: CLIPPING MODE (AUTO INTERVAL / CUSTOM TIMESTAMPS + ANTI-COPYRIGHT)
+            elif process_mode == "2. Anti-Copyright Clipping & Trimming Mode (Multiple Parts)":
                 clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
                 
                 if clip_mode == "Auto-Interval":
@@ -301,7 +309,7 @@ else:
                         try:
                             with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                             
-                            with st.spinner("⏳ Long video parts me cut aur process ho rahi hai..."):
+                            with st.spinner("⏳ Video clips me cut aur Anti-Copyright effects apply ho rahe hain..."):
                                 video = VideoFileClip(temp_in)
                                 generated_clips = []
 
@@ -312,11 +320,11 @@ else:
                                     while curr < total_dur:
                                         end = min(curr + interval_sec, total_dur)
                                         subclip = video.subclip(curr, end)
-                                        edited_subclip = apply_custom_effects(subclip, count)
+                                        edited_subclip = apply_anti_copyright_effects(subclip, count)
                                         
                                         out_clip_path = f"{EXPORT_DIR}/clip_{count}_{int(time.time())}.mp4"
                                         edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                        generated_clips.append((f"Clip_{count}.mp4", out_clip_path))
+                                        generated_clips.append((f"AntiCopyright_Clip_{count}.mp4", out_clip_path))
                                         curr += interval_sec
                                         count += 1
                                 else:
@@ -324,15 +332,15 @@ else:
                                     for idx, r in enumerate(ranges):
                                         start, end = float(r[0]), float(r[1])
                                         subclip = video.subclip(start, min(end, video.duration))
-                                        edited_subclip = apply_custom_effects(subclip, idx + 1)
+                                        edited_subclip = apply_anti_copyright_effects(subclip, idx + 1)
                                         
                                         out_clip_path = f"{EXPORT_DIR}/custom_clip_{idx+1}_{int(time.time())}.mp4"
                                         edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                        generated_clips.append((f"Custom_Clip_{idx+1}.mp4", out_clip_path))
+                                        generated_clips.append((f"AntiCopyright_Custom_Clip_{idx+1}.mp4", out_clip_path))
 
                                 video.close()
 
-                                st.success(f"🎉 Total {len(generated_clips)} Clips Tayar Hain!")
+                                st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Clips Tayar Hain!")
                                 for name, path in generated_clips:
                                     with open(path, "rb") as f:
                                         st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
