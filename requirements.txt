@@ -3,4 +3,4 @@ moviepy<2.0.0
 numpy
 imageio
 imageio-ffmpeg
-yt-dlp
+yt-dlp>=2024.08.06
