@@ -304,7 +304,6 @@ else:
     if st.session_state.is_admin:
         menu_options.append("👑 Admin Panel")
     
-    # Single Column Vertical Menu (Ek ke neeche ek)
     selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
     
     st.divider()
@@ -360,7 +359,7 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (/api/clip)
+    # 2. YOUTUBE VIDEO CLIPPER (FIXED FOR 403 FORBIDDEN ERROR)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         if not HAS_YTDLP:
@@ -382,13 +381,16 @@ else:
                         try:
                             temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                             ydl_opts = {
-                                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                                'format': 'best',
                                 'outtmpl': temp_yt_file,
                                 'quiet': True,
                                 'no_warnings': True,
-                                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'referer': 'https://www.youtube.com/',
-                                'nocheckcertificate': True
+                                'nocheckcertificate': True,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android', 'web']
+                                    }
+                                }
                             }
                             
                             with YoutubeDL(ydl_opts) as ydl:
@@ -438,7 +440,7 @@ else:
                         except Exception as e:
                             st.error(f"Failed to process YouTube Video: {e}")
 
-    # 3. OUTPUT LIBRARY MANAGER (/api/outputs)
+    # 3. OUTPUT LIBRARY MANAGER
     elif selected_menu == "📁 Output Library Manager":
         st.subheader("📁 Output Library Manager")
         st.info("System me processed sabhi videos/clips ki list niche dekhiye:")
@@ -470,7 +472,7 @@ else:
                             st.download_button("📥 Download", f, file_name=fname, key=f"lib_dl_{fname}")
                     st.divider()
 
-    # 4. LIBRARY CLEANER (/api/clear-library)
+    # 4. LIBRARY CLEANER
     elif selected_menu == "🧹 Library Cleaner":
         st.subheader("🧹 System Storage & Library Cleaner")
         st.warning("⚠️ Yeh option system se saari render kiye gaye MP4/MP3 files aur temporary storage ko permanently delete kar dega.")
