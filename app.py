@@ -4,8 +4,9 @@ import numpy as np
 import PIL.Image
 from datetime import datetime, timedelta
 import urllib.parse
+import requests
 
-# MoviePy & YT-DLP Imports (Compatible with moviepy < 2.0.0)
+# MoviePy & YT-DLP Imports
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
 
@@ -44,6 +45,49 @@ def hash_text(text):
 ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
+
+# Cobalt API Direct Downloader Engine
+def download_via_cobalt_api(youtube_url, output_path):
+    instances = [
+        "https://co.wuk.sh/api/json",
+        "https://api.cobalt.tools/api/json",
+        "https://cobalt-api.kwiatek.xyz/api/json"
+    ]
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+    
+    payload = {
+        "url": youtube_url,
+        "vQuality": "720",
+        "filenamePattern": "basic"
+    }
+
+    direct_url = None
+    for api_url in instances:
+        try:
+            res = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if "url" in data:
+                    direct_url = data["url"]
+                    break
+        except Exception:
+            continue
+
+    if not direct_url:
+        raise Exception("Cobalt API failed to fetch video URL.")
+
+    with requests.get(direct_url, stream=True, timeout=30) as r:
+        r.raise_for_status()
+        with open(output_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024*1024):
+                if chunk:
+                    f.write(chunk)
+    return True
 
 # Automated Cleanup Function
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
@@ -357,49 +401,49 @@ else:
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE VIDEO CLIPPER (100% FIXED FOR STREAMLIT CLOUD)
+    # 2. YOUTUBE VIDEO CLIPPER (COBALT DIRECT API INTEGRATION)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
-        if not HAS_YTDLP:
-            st.error("⚠️ `yt-dlp` installed nahi hai. Pip command se install karein: `pip install yt-dlp`")
+        yt_url = st.text_input("Enter YouTube Video URL:")
+        clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
+        
+        if clip_mode == "Auto-Interval":
+            interval_sec = st.number_input("Interval duration (Seconds):", min_value=5, max_value=300, value=10)
         else:
-            yt_url = st.text_input("Enter YouTube Video URL:")
-            clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
-            
-            if clip_mode == "Auto-Interval":
-                interval_sec = st.number_input("Interval duration (Seconds):", min_value=5, max_value=300, value=10)
+            timestamps_input = st.text_input("Timestamps (format: 0-10, 15-30):", value="0-10, 15-30")
+
+        if st.button("📥 Download, Edit & Cut YouTube Video"):
+            if not yt_url.strip():
+                st.error("⚠️ Pehle YouTube Video ka Link daalein.")
             else:
-                timestamps_input = st.text_input("Timestamps (format: 0-10, 15-30):", value="0-10, 15-30")
+                with st.spinner("⏳ High-Speed API Engine video fetch kar raha hai..."):
+                    temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
+                    download_success = False
 
-            if st.button("📥 Download, Edit & Cut YouTube Video"):
-                if not yt_url.strip():
-                    st.error("⚠️ Pehle YouTube Video ka Link daalein.")
-                else:
-                    with st.spinner("⏳ YouTube video download, anti-copyright edit aur process ho raha hai..."):
-                        try:
-                            temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
-                            
-                            # Universal Stream Selector for YT-DLP Bypass
-                            ydl_opts = {
-                                'format': 'best',
-                                'outtmpl': temp_yt_file,
-                                'quiet': True,
-                                'no_warnings': True,
-                                'nocheckcertificate': True,
-                                'geo_bypass': True,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['ios', 'android', 'mweb'],
-                                    }
+                    # Primary Method: Cobalt Direct API Stream
+                    try:
+                        download_via_cobalt_api(yt_url.strip(), temp_yt_file)
+                        download_success = True
+                    except Exception as cobalt_err:
+                        # Secondary Fallback: YT-DLP with Mobile Client
+                        if HAS_YTDLP:
+                            try:
+                                ydl_opts = {
+                                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                                    'outtmpl': temp_yt_file,
+                                    'quiet': True,
+                                    'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
                                 }
-                            }
+                                with YoutubeDL(ydl_opts) as ydl:
+                                    ydl.extract_info(yt_url.strip(), download=True)
+                                download_success = True
+                            except Exception as ytdlp_err:
+                                st.error(f"❌ Primary and Fallback Engines both failed: {cobalt_err}")
+                        else:
+                            st.error(f"❌ API Engine Error: {cobalt_err}")
 
-                            if os.path.exists('cookies.txt'):
-                                ydl_opts['cookiefile'] = 'cookies.txt'
-
-                            with YoutubeDL(ydl_opts) as ydl:
-                                info = ydl.extract_info(yt_url.strip(), download=True)
-
+                    if download_success and os.path.exists(temp_yt_file):
+                        try:
                             video = VideoFileClip(temp_yt_file)
                             generated_clips = []
 
@@ -410,8 +454,6 @@ else:
                                 while curr < total_dur:
                                     end = min(curr + interval_sec, total_dur)
                                     subclip = video.subclip(curr, end)
-                                    
-                                    # Anti-Copyright Edit Apply
                                     edited_subclip = apply_custom_effects(subclip, count)
                                     
                                     out_clip_path = f"{EXPORT_DIR}/yt_clip_{count}_{int(time.time())}.mp4"
@@ -424,8 +466,6 @@ else:
                                 for idx, r in enumerate(ranges):
                                     start, end = float(r[0]), float(r[1])
                                     subclip = video.subclip(start, min(end, video.duration))
-                                    
-                                    # Anti-Copyright Edit Apply
                                     edited_subclip = apply_custom_effects(subclip, idx + 1)
                                     
                                     out_clip_path = f"{EXPORT_DIR}/yt_custom_{idx+1}_{int(time.time())}.mp4"
@@ -435,13 +475,13 @@ else:
                             video.close()
                             if os.path.exists(temp_yt_file): os.remove(temp_yt_file)
 
-                            st.success(f"🎉 YouTube Video Se Total {len(generated_clips)} Anti-Copyright Edited Clips Tayar Ho Gaye Hain!")
+                            st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Edited Clips Tayar Hain!")
                             for name, path in generated_clips:
                                 with open(path, "rb") as f:
                                     st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
 
-                        except Exception as e:
-                            st.error(f"Failed to process YouTube Video: {e}")
+                        except Exception as proc_err:
+                            st.error(f"Video Processing Error: {proc_err}")
 
     # 3. OUTPUT LIBRARY MANAGER
     elif selected_menu == "📁 Output Library Manager":
