@@ -6,7 +6,6 @@ from datetime import datetime
 import urllib.parse
 import urllib.request
 import re
-import yt_dlp
 
 # MoviePy Compatibility Patch
 if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -42,62 +41,71 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# 🚀 HYBRID YOUTUBE DOWNLOAD ENGINE (yt-dlp + Fallback Mirror API)
+# 🚀 FAILSAFE MULTI-ENGINE DOWNLOADER (Cobalt + Piped APIs)
 def download_youtube_failsafe(youtube_url, output_path):
     clean_url = youtube_url.strip()
     match = re.search(r"(?:v=|\/|embed\/|shorts\/|youtu\.be\/)([0-9A-Za-z_-]{11})", clean_url)
     
     if match:
         video_id = match.group(1)
-        clean_url = f"https://www.youtube.com/watch?v={video_id}"
+        full_url = f"https://www.youtube.com/watch?v={video_id}"
     else:
         raise Exception("Sahi YouTube URL/Link daalein!")
 
-    # 1. Primary Engine: YT-DLP
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best',
-        'outtmpl': output_path,
-        'quiet': True,
-        'no_warnings': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'nocheckcertificate': True,
+    # 1. Primary Engine: Cobalt API
+    cobalt_instances = [
+        "https://api.cobalt.tools/api/json",
+        "https://cobalt-api.kwippy.com/api/json",
+        "https://co.wuk.sh/api/json"
+    ]
+
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([clean_url])
-        if os.path.exists(output_path):
-            return True
-    except Exception:
-        pass
+    payload = json.dumps({
+        "url": full_url,
+        "vQuality": "720"
+    }).encode('utf-8')
 
-    # 2. Fallback Engine: Mirror API Systems
-    invidious_instances = [
-        "https://api.piped.video",
-        "https://pipedapi.kavin.rocks",
-        "https://inv.tux.pizza",
-        "https://invidious.nerdvpn.de"
-    ]
-    
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-
-    for instance in invidious_instances:
+    for instance in cobalt_instances:
         try:
-            api_endpoint = f"{instance}/streams/{video_id}"
-            req = urllib.request.Request(api_endpoint, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode())
-                streams = [s for s in data.get("videoStreams", []) if s.get("container") == "mp4"]
-                if streams:
-                    download_url = streams[0]["url"]
-                    dl_req = urllib.request.Request(download_url, headers=headers)
+            req = urllib.request.Request(instance, data=payload, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_data = json.loads(response.read().decode())
+                dl_link = res_data.get("url")
+                
+                if dl_link:
+                    dl_req = urllib.request.Request(dl_link, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
                         out_file.write(dl_resp.read())
                     return True
         except Exception:
             continue
 
-    raise Exception("Video download nahi ho paa raha hai. Browser se direct full link (youtube.com/watch?v=...) copy karke try karein.")
+    # 2. Fallback Engine: Piped API
+    piped_instances = [
+        "https://api.piped.video",
+        "https://pipedapi.kavin.rocks"
+    ]
+    for instance in piped_instances:
+        try:
+            piped_url = f"{instance}/streams/{video_id}"
+            req = urllib.request.Request(piped_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                streams = [s for s in data.get("videoStreams", []) if s.get("container") == "mp4" and not s.get("videoOnly")]
+                if streams:
+                    dl_req = urllib.request.Request(streams[0]["url"], headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
+                        out_file.write(dl_resp.read())
+                    return True
+        except Exception:
+            continue
+
+    raise Exception("Sabhi download engines busy hain. Kripya thodi der baad try karein.")
 
 # Storage Cleanup System
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
@@ -135,7 +143,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS Styling
+# Custom CSS
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
@@ -172,7 +180,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Helper Video Functions
+# Helper Functions
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
         h, w, c = image.shape
@@ -338,7 +346,7 @@ else:
                         except Exception as e: st.error(f"Error aaya: {e}")
                         finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. YOUTUBE CLIPPER (HYBRID YT-DLP ENGINE)
+    # 2. YOUTUBE CLIPPER
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         yt_url = st.text_input("Enter YouTube Video URL:")
@@ -353,7 +361,7 @@ else:
             if not yt_url.strip():
                 st.error("⚠️ Pehle YouTube Video ka Link daalein.")
             else:
-                with st.spinner("⏳ Video fetch aur process ho raha hai..."):
+                with st.spinner("⏳ Video download aur process ho raha hai..."):
                     temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
                     
                     try:
