@@ -4,9 +4,10 @@ import numpy as np
 import PIL.Image
 from datetime import datetime, timedelta
 import urllib.parse
-import requests
+import urllib.request
+import re
 
-# MoviePy & YT-DLP Imports
+# MoviePy Compatibility Patch
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
 
@@ -15,12 +16,6 @@ try:
     import moviepy.video.fx.all as vfx
 except ImportError:
     st.error("MoviePy import error! Please check requirements.txt")
-
-try:
-    from yt_dlp import YoutubeDL
-    HAS_YTDLP = True
-except ImportError:
-    HAS_YTDLP = False
 
 # Global Render Lock System
 @st.cache_resource
@@ -46,56 +41,51 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# Cobalt API Direct Downloader Engine
-def download_via_cobalt_api(youtube_url, output_path):
-    instances = [
-        "https://co.wuk.sh/api/json",
-        "https://api.cobalt.tools/api/json",
-        "https://cobalt-api.kwiatek.xyz/api/json"
+# 🚀 FAILSAFE YOUTUBE DOWNLOAD ENGINE (Bypasses 403 Forbidden Block)
+def download_youtube_failsafe(youtube_url, output_path):
+    video_id = None
+    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})", youtube_url)
+    if match:
+        video_id = match.group(1)
+        
+    if not video_id:
+        raise Exception("Sahi YouTube URL daalein!")
+
+    # Invidious Mirrors Array
+    invidious_instances = [
+        "https://invidious.nerdvpn.de",
+        "https://inv.tux.pizza",
+        "https://invidious.projectsegfau.lt",
+        "https://invidious.drgns.space"
     ]
     
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
-    
-    payload = {
-        "url": youtube_url,
-        "vQuality": "720",
-        "filenamePattern": "basic"
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
-    direct_url = None
-    for api_url in instances:
+    for instance in invidious_instances:
         try:
-            res = requests.post(api_url, json=payload, headers=headers, timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                if "url" in data:
-                    direct_url = data["url"]
-                    break
+            api_endpoint = f"{instance}/api/v1/videos/{video_id}"
+            req = urllib.request.Request(api_endpoint, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                
+                format_streams = [s for s in data.get("formatStreams", []) if "video/mp4" in s.get("type", "")]
+                if format_streams:
+                    download_url = format_streams[0]["url"]
+                    
+                    dl_req = urllib.request.Request(download_url, headers=headers)
+                    with urllib.request.urlopen(dl_req, timeout=30) as dl_resp, open(output_path, 'wb') as out_file:
+                        out_file.write(dl_resp.read())
+                    return True
         except Exception:
             continue
 
-    if not direct_url:
-        raise Exception("Cobalt API failed to fetch video URL.")
+    raise Exception("Sabhi Mirror Servers busy hain. Kripya thodi der baad try karein.")
 
-    with requests.get(direct_url, stream=True, timeout=30) as r:
-        r.raise_for_status()
-        with open(output_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024*1024):
-                if chunk:
-                    f.write(chunk)
-    return True
-
-# Automated Cleanup Function
+# Automated Cleanup System
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
     if temp_file_path and os.path.exists(temp_file_path):
-        try:
-            os.remove(temp_file_path)
-        except Exception:
-            pass
+        try: os.remove(temp_file_path)
+        except Exception: pass
             
     if os.path.exists(EXPORT_DIR):
         now_time = time.time()
@@ -103,11 +93,8 @@ def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
             if os.path.isfile(file_path):
                 file_age_hours = (now_time - os.path.getmtime(file_path)) / 3600
                 if file_age_hours > max_age_hours:
-                    try:
-                        os.remove(file_path)
-                    except Exception:
-                        pass
-                        
+                    try: os.remove(file_path)
+                    except Exception: pass
     gc.collect()
 
 def load_db():
@@ -124,85 +111,50 @@ def load_db():
         return {"users": {}, "subscriptions": {}, "pending_requests": [], "support_tickets": [], "history": {}}
 
 def save_db(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    with open(DB_FILE, "w") as f: json.dump(data, f, indent=4)
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS Styling
+# Custom CSS
 st.markdown(f"""
     <style>
     #MainMenu, header, footer {{visibility: hidden;}}
-    
     .stApp {{
         background-image: url("{BG_IMAGE_URL}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        background-size: cover; background-position: center; background-attachment: fixed;
         color: #FFFFFF !important;
     }}
-    
     .stApp > div {{
-        background: rgba(0, 0, 0, 0.85) !important;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(5px);
+        background: rgba(0, 0, 0, 0.85) !important; padding: 20px;
+        border-radius: 15px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px);
     }}
-    
     p, span, label, div, li, h1, h2, h3, h4 {{
-        color: #FFFFFF !important;
-        text-shadow: 1px 1px 2px #000000 !important;
+        color: #FFFFFF !important; text-shadow: 1px 1px 2px #000000 !important;
     }}
-    
     .main-header {{
         text-align: left; font-weight: 900; font-size: 2.2rem;
         background: linear-gradient(45deg, #FFD700, #FF69B4);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
-    
     div[data-testid="stRadio"] > label {{
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-        color: #FFD700 !important;
+        font-weight: bold !important; font-size: 1.1rem !important; color: #FFD700 !important;
     }}
-    
     div[data-testid="stRadio"] div[role="radiogroup"] > label {{
-        background: rgba(255, 255, 255, 0.1) !important;
-        padding: 10px 15px !important;
-        border-radius: 8px !important;
-        margin-bottom: 6px !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        transition: all 0.3s ease !important;
-        width: 100% !important;
+        background: rgba(255, 255, 255, 0.1) !important; padding: 10px 15px !important;
+        border-radius: 8px !important; margin-bottom: 6px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important; width: 100% !important;
     }}
-    
-    div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {{
-        background: rgba(255, 215, 0, 0.3) !important;
-        border-color: #FFD700 !important;
-    }}
-    
     .tg-support-btn {{
         float: right; background: linear-gradient(90deg, #0088cc, #00c6ff);
         color: white !important; padding: 8px 16px; border-radius: 20px;
         text-decoration: none; font-weight: bold;
     }}
-    
-    [data-testid="stMetricValue"] {{
-        font-size: 1.1rem !important;
-        font-weight: 600 !important;
-        color: #FFD700 !important;
-    }}
-    [data-testid="stMetricLabel"] {{
-        font-size: 0.85rem !important;
-        color: #FFFFFF !important;
-    }}
     </style>
 """, unsafe_allow_html=True)
 
-# Helper Video Functions
+# Helper Editing Functions
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
         h, w, c = image.shape
@@ -263,27 +215,20 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     progress_bar.progress(85)
     
     final_clip.write_videofile(
-        output_path, 
-        codec="libx264", 
-        audio_codec="aac", 
-        bitrate=bitrate, 
-        preset="ultrafast", 
-        threads=1, 
-        logger=None
+        output_path, codec="libx264", audio_codec="aac", bitrate=bitrate, preset="ultrafast", threads=1, logger=None
     )
     
     try:
         video.close()
         final_clip.close()
         for c in clips: c.close()
-    except Exception:
-        pass
+    except Exception: pass
 
     total_elapsed = int(time.time() - start_time)
     progress_bar.progress(100)
     status_text_holder.success(f"✅ Video Render Completed in {total_elapsed} seconds!")
 
-# Header Layout
+# Top Bar
 col_title, col_support = st.columns([3, 1])
 with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
 with col_support: st.markdown(f'<a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">✈️ Telegram Support</a>', unsafe_allow_html=True)
@@ -322,8 +267,7 @@ else:
         if now < exp_date:
             diff = exp_date - now
             expiry_display = f"{sub_info['plan']} (⏳ {diff.days}d {diff.seconds//3600}h left)"
-        else:
-            expiry_display = "⚠️ Plan Expired!"
+        else: expiry_display = "⚠️ Plan Expired!"
 
     col_m1, col_m2, col_logout = st.columns([2, 2, 1])
     with col_m1: st.metric("Available Coins", f"🪙 {user_coins}")
@@ -335,19 +279,10 @@ else:
 
     st.divider()
 
-    menu_options = [
-        "📹 Studio Processor", 
-        "✂️ YouTube Video Clipper", 
-        "📁 Output Library Manager", 
-        "🧹 Library Cleaner", 
-        "🪙 Buy Coins / Subscriptions", 
-        "💬 Chat with Admin"
-    ]
-    if st.session_state.is_admin:
-        menu_options.append("👑 Admin Panel")
+    menu_options = ["📹 Studio Processor", "✂️ YouTube Video Clipper", "📁 Output Library Manager", "🧹 Library Cleaner", "🪙 Buy Coins / Subscriptions", "💬 Chat with Admin"]
+    if st.session_state.is_admin: menu_options.append("👑 Admin Panel")
     
     selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
-    
     st.divider()
 
     # 1. STUDIO PROCESSOR
@@ -355,25 +290,16 @@ else:
         uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
         if uploaded_file:
             quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
-            
-            res_config = {
-                "720p HD (Free - 0 Coin)": (720, "4000k", 0),
-                "1080p Full HD (5 Coins)": (1080, "12000k", 5),
-                "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)
-            }
+            res_config = {"720p HD (Free - 0 Coin)": (720, "4000k", 0), "1080p Full HD (5 Coins)": (1080, "12000k", 5), "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)}
             target_height, bitrate, required_coins = res_config[quality_option]
 
             if st.button("🚀 Render Video"):
                 if user_coins < required_coins and not st.session_state.is_admin:
                     st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye.")
                 else:
-                    if RENDER_LOCK.locked():
-                        st.warning("⏳ Server busy hai! Aap Queue me hain.")
-
                     with RENDER_LOCK:
                         p_bar = st.progress(0)
                         status_text_holder = st.empty()
-                        
                         temp_in = f"temp_in_{int(time.time())}.mp4"
                         out_path = f"{EXPORT_DIR}/{int(time.time())}_{uploaded_file.name}"
                         
@@ -385,23 +311,16 @@ else:
                                 db_data["users"][current_user] = user_coins - required_coins
                             
                             if current_user not in db_data["history"]: db_data["history"][current_user] = []
-                            db_data["history"][current_user].append({
-                                "filename": uploaded_file.name, 
-                                "path": out_path, 
-                                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            })
+                            db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                             save_db(db_data)
 
                             st.success("🎉 Video Render Complete!")
                             with open(out_path, "rb") as f:
                                 st.download_button("📥 Direct Download Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
+                        except Exception as e: st.error(f"Error aaya: {e}")
+                        finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-                        except Exception as e:
-                            st.error(f"Error aaya: {e}")
-                        finally:
-                            auto_cleanup_storage_and_memory(temp_file_path=temp_in)
-
-    # 2. YOUTUBE VIDEO CLIPPER (COBALT DIRECT API INTEGRATION)
+    # 2. YOUTUBE CLIPPER (FIXED FOR 403 FORBIDDEN)
     elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Anti-Copyright Auto Clipper")
         yt_url = st.text_input("Enter YouTube Video URL:")
@@ -416,34 +335,13 @@ else:
             if not yt_url.strip():
                 st.error("⚠️ Pehle YouTube Video ka Link daalein.")
             else:
-                with st.spinner("⏳ High-Speed API Engine video fetch kar raha hai..."):
+                with st.spinner("⏳ Mirror API Engine se video download ho raha hai..."):
                     temp_yt_file = f"temp_yt_{int(time.time())}.mp4"
-                    download_success = False
-
-                    # Primary Method: Cobalt Direct API Stream
+                    
                     try:
-                        download_via_cobalt_api(yt_url.strip(), temp_yt_file)
-                        download_success = True
-                    except Exception as cobalt_err:
-                        # Secondary Fallback: YT-DLP with Mobile Client
-                        if HAS_YTDLP:
-                            try:
-                                ydl_opts = {
-                                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-                                    'outtmpl': temp_yt_file,
-                                    'quiet': True,
-                                    'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
-                                }
-                                with YoutubeDL(ydl_opts) as ydl:
-                                    ydl.extract_info(yt_url.strip(), download=True)
-                                download_success = True
-                            except Exception as ytdlp_err:
-                                st.error(f"❌ Primary and Fallback Engines both failed: {cobalt_err}")
-                        else:
-                            st.error(f"❌ API Engine Error: {cobalt_err}")
-
-                    if download_success and os.path.exists(temp_yt_file):
-                        try:
+                        download_youtube_failsafe(yt_url.strip(), temp_yt_file)
+                        
+                        if os.path.exists(temp_yt_file):
                             video = VideoFileClip(temp_yt_file)
                             generated_clips = []
 
@@ -480,16 +378,13 @@ else:
                                 with open(path, "rb") as f:
                                     st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
 
-                        except Exception as proc_err:
-                            st.error(f"Video Processing Error: {proc_err}")
+                    except Exception as main_err:
+                        st.error(f"❌ Error: {main_err}")
 
     # 3. OUTPUT LIBRARY MANAGER
     elif selected_menu == "📁 Output Library Manager":
         st.subheader("📁 Output Library Manager")
-        st.info("System me processed sabhi videos/clips ki list niche dekhiye:")
-        
-        if st.button("🔄 Refresh Output Library"):
-            st.rerun()
+        if st.button("🔄 Refresh Output Library"): st.rerun()
             
         all_exports = glob.glob(os.path.join(EXPORT_DIR, "*"))
         if not all_exports:
@@ -499,17 +394,9 @@ else:
                 if os.path.isfile(filepath):
                     fname = os.path.basename(filepath)
                     fsize = round(os.path.getsize(filepath) / (1024 * 1024), 2)
-                    fduration = "N/A"
-                    try:
-                        clip = VideoFileClip(filepath)
-                        fduration = f"{round(clip.duration, 2)} sec"
-                        clip.close()
-                    except Exception:
-                        pass
-                    
                     c1, c2, c3 = st.columns([3, 2, 2])
                     with c1: st.write(f"📄 **{fname}**")
-                    with c2: st.write(f"⏱️ Duration: `{fduration}` | 📦 Size: `{fsize} MB`")
+                    with c2: st.write(f"📦 Size: `{fsize} MB`")
                     with c3:
                         with open(filepath, "rb") as f:
                             st.download_button("📥 Download", f, file_name=fname, key=f"lib_dl_{fname}")
@@ -518,129 +405,52 @@ else:
     # 4. LIBRARY CLEANER
     elif selected_menu == "🧹 Library Cleaner":
         st.subheader("🧹 System Storage & Library Cleaner")
-        st.warning("⚠️ Yeh option system se saari render kiye gaye MP4/MP3 files aur temporary storage ko permanently delete kar dega.")
-        
-        if st.button("🚨 Clear Entire Library & Artifacts"):
+        if st.button("🚨 Clear Entire Library"):
             deleted_count = 0
             if os.path.exists(EXPORT_DIR):
                 for file_path in glob.glob(os.path.join(EXPORT_DIR, "*")):
                     if os.path.isfile(file_path):
-                        try:
-                            os.remove(file_path)
-                            deleted_count += 1
-                        except Exception:
-                            pass
+                        try: os.remove(file_path); deleted_count += 1
+                        except Exception: pass
             gc.collect()
-            st.success(f"✅ Library Cleaned! Total {deleted_count} files/artifacts storage se remove ho chuki hain.")
+            st.success(f"✅ Library Cleaned! Total {deleted_count} files removed.")
             st.rerun()
 
-    # 5. BUY COINS & PLANS TAB
+    # 5. BUY COINS
     elif selected_menu == "🪙 Buy Coins / Subscriptions":
         st.subheader("🪙 Recharge Coins & Buy Plans")
-        st.markdown("""
-        ### 📌 **Our Pricing & Subscription Plans:**
-        * 🪙 **Starter Pack:** ₹49 = **50 Coins**
-        * 🚀 **Pro Pack:** ₹199 = **300 Coins**
-        * 🗓️ **Weekly Plan:** ₹249 = **600 Coins** *(Validity: 7 Days)*
-        * 📅 **Monthly Plan:** ₹399 = **999 Coins** *(Validity: 30 Days)*
-        * 👑 **Monthly VIP:** ₹999 = **Unlimited Coins** *(Validity: 30 Days)*
-        """)
-        st.divider()
-        st.subheader("💳 UPI Payment & QR Code")
-        
-        col_qr1, col_qr2 = st.columns([1, 2])
-        with col_qr1:
-            upi_qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={urllib.parse.quote(f'upi://pay?pa={UPI_ID_TEXT}&pn=CinepoliisStudio&cu=INR')}"
-            st.image(upi_qr_url, caption="Scan QR via PhonePe / GPay / Paytm", width=200)
-            
-        with col_qr2:
-            st.code(UPI_ID_TEXT, language="text")
-
+        st.write("UPI ID: " + UPI_ID_TEXT)
         with st.form("buy_coins_form"):
-            utr_no = st.text_input("Enter UTR / Transaction Reference No.")
-            selected_plan = st.selectbox("Select Your Plan / Coins Pack", [
-                "₹49 - 50 Coins",
-                "₹199 - 300 Coins",
-                "₹249 - 600 Coins (Weekly - 7 Days)",
-                "₹399 - 999 Coins (Monthly - 30 Days)",
-                "₹999 - VIP Unlimited Plan (30 Days)"
-            ])
+            utr_no = st.text_input("Enter UTR Reference No.")
+            selected_plan = st.selectbox("Select Plan", ["₹49 - 50 Coins", "₹199 - 300 Coins", "₹249 - 600 Coins (Weekly)", "₹399 - 999 Coins (Monthly)", "₹999 - VIP Unlimited"])
             if st.form_submit_button("📩 Submit Payment Request"):
                 if utr_no.strip():
                     if "pending_requests" not in db_data: db_data["pending_requests"] = []
-                    db_data["pending_requests"].append({
-                        "email": current_user,
-                        "utr": utr_no.strip(),
-                        "plan": selected_plan,
-                        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
+                    db_data["pending_requests"].append({"email": current_user, "utr": utr_no.strip(), "plan": selected_plan, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                     save_db(db_data)
                     st.success("✅ Payment Request Submitted!")
-                else:
-                    st.error("⚠️ UTR Number bharna zaroori hai.")
 
     # 6. CHAT WITH ADMIN
     elif selected_menu == "💬 Chat with Admin":
-        st.subheader("💬 Private Support Chat with Admin")
+        st.subheader("💬 Private Support Chat")
         with st.form("send_msg_form"):
             user_msg = st.text_area("Write Message:")
-            if st.form_submit_button("📤 Send Message"):
+            if st.form_submit_button("📤 Send"):
                 if user_msg.strip():
-                    ticket = {
-                        "id": int(time.time()),
-                        "user": current_user,
-                        "msg": user_msg.strip(),
-                        "reply": "",
-                        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
+                    ticket = {"id": int(time.time()), "user": current_user, "msg": user_msg.strip(), "reply": "", "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                     if "support_tickets" not in db_data: db_data["support_tickets"] = []
                     db_data["support_tickets"].append(ticket)
                     save_db(db_data)
-                    st.success("✅ Message bhej diya gaya hai!")
                     st.rerun()
-
-        st.divider()
-        all_tickets = db_data.get("support_tickets", [])
-        my_tickets = [t for t in all_tickets if t.get("user") == current_user]
-        for t in reversed(my_tickets):
-            st.write(f"💬 **You ({t['date']}):** {t['msg']}")
-            if t.get("reply"): st.success(f"👑 **Admin Reply:** {t['reply']}")
-            else: st.warning("⏳ Admin reply ka wait karein...")
-            st.divider()
 
     # 7. ADMIN PANEL
     elif selected_menu == "👑 Admin Panel" and st.session_state.is_admin:
-        st.subheader("👑 Admin Management Console")
+        st.subheader("👑 Admin Console")
         pending_reqs = db_data.get("pending_requests", [])
-        if not pending_reqs:
-            st.info("Koi pending payment request nahi hai.")
-        else:
-            for idx, req in enumerate(pending_reqs):
-                st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
-                c1, c2 = st.columns(2)
-                if c1.button("✅ Approve Request", key=f"app_{idx}"):
-                    u_email = req['email']
-                    plan_str = req['plan']
-                    coins_to_add = 50
-                    days_validity = 0
-
-                    if "300" in plan_str: coins_to_add = 300
-                    elif "600" in plan_str: coins_to_add = 600; days_validity = 7
-                    elif "999 Coins" in plan_str: coins_to_add = 999; days_validity = 30
-                    elif "VIP" in plan_str: coins_to_add = 99999; days_validity = 30
-                    
-                    db_data["users"][u_email] = db_data["users"].get(u_email, 0) + coins_to_add
-                    if days_validity > 0:
-                        exp_time = datetime.now() + timedelta(days=days_validity)
-                        db_data["subscriptions"][u_email] = {"plan": plan_str, "expiry": exp_time.strftime("%Y-%m-%d %H:%M:%S")}
-
-                    db_data["pending_requests"].pop(idx)
-                    save_db(db_data)
-                    st.success("Approved!")
-                    st.rerun()
-                    
-                if c2.button("❌ Reject Request", key=f"rej_{idx}"):
-                    db_data["pending_requests"].pop(idx)
-                    save_db(db_data)
-                    st.rerun()
-                st.divider()
+        for idx, req in enumerate(pending_reqs):
+            st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
+            if st.button("✅ Approve", key=f"app_{idx}"):
+                db_data["users"][req['email']] = db_data["users"].get(req['email'], 0) + 500
+                db_data["pending_requests"].pop(idx)
+                save_db(db_data)
+                st.rerun()
