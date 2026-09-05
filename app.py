@@ -120,23 +120,26 @@ st.markdown(f"""
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
     
-    button[data-baseweb="tab"] {{
-        color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.15) !important;
-        border-radius: 8px !important;
-        padding: 8px 16px !important;
-        margin-right: 5px !important;
-    }}
-    
-    button[aria-selected="true"] {{
-        background-color: #FFD700 !important;
-        color: #000000 !important;
+    /* Vertical Radio Menu Styling */
+    div[data-testid="stRadio"] > label {{
         font-weight: bold !important;
+        font-size: 1.1rem !important;
+        color: #FFD700 !important;
     }}
     
-    button[aria-selected="true"] p {{
-        color: #000000 !important;
-        text-shadow: none !important;
+    div[data-testid="stRadio"] div[role="radiogroup"] > label {{
+        background: rgba(255, 255, 255, 0.1) !important;
+        padding: 10px 15px !important;
+        border-radius: 8px !important;
+        margin-bottom: 6px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }}
+    
+    div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {{
+        background: rgba(255, 215, 0, 0.3) !important;
+        border-color: #FFD700 !important;
     }}
     
     .tg-support-btn {{
@@ -285,7 +288,9 @@ else:
             st.session_state.logged_in = False
             st.rerun()
 
-    tab_list = [
+    st.divider()
+
+    menu_options = [
         "📹 Studio Processor", 
         "✂️ YouTube Video Clipper", 
         "📁 Output Library Manager", 
@@ -294,12 +299,15 @@ else:
         "💬 Chat with Admin"
     ]
     if st.session_state.is_admin:
-        tab_list.append("👑 Admin Panel")
+        menu_options.append("👑 Admin Panel")
     
-    tabs = st.tabs(tab_list)
+    # Single Column Vertical Menu (Ek ke neeche ek)
+    selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
+    
+    st.divider()
 
     # 1. STUDIO PROCESSOR
-    with tabs[0]:
+    if selected_menu == "📹 Studio Processor":
         uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
         if uploaded_file:
             quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
@@ -350,7 +358,7 @@ else:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
     # 2. YOUTUBE VIDEO CLIPPER (/api/clip)
-    with tabs[1]:
+    elif selected_menu == "✂️ YouTube Video Clipper":
         st.subheader("✂️ YouTube Video Downloader & Auto/Custom Clipper")
         if not HAS_YTDLP:
             st.error("⚠️ `yt-dlp` installed nahi hai. Pip command se install karein: `pip install yt-dlp`")
@@ -416,7 +424,7 @@ else:
                             st.error(f"Failed to process YouTube Video: {e}")
 
     # 3. OUTPUT LIBRARY MANAGER (/api/outputs)
-    with tabs[2]:
+    elif selected_menu == "📁 Output Library Manager":
         st.subheader("📁 Output Library Manager")
         st.info("System me processed sabhi videos/clips ki list niche dekhiye:")
         
@@ -448,7 +456,7 @@ else:
                     st.divider()
 
     # 4. LIBRARY CLEANER (/api/clear-library)
-    with tabs[3]:
+    elif selected_menu == "🧹 Library Cleaner":
         st.subheader("🧹 System Storage & Library Cleaner")
         st.warning("⚠️ Yeh option system se saari render kiye gaye MP4/MP3 files aur temporary storage ko permanently delete kar dega.")
         
@@ -467,7 +475,7 @@ else:
             st.rerun()
 
     # 5. BUY COINS & PLANS TAB
-    with tabs[4]:
+    elif selected_menu == "🪙 Buy Coins / Subscriptions":
         st.subheader("🪙 Recharge Coins & Buy Plans")
         st.markdown("""
         ### 📌 **Our Pricing & Subscription Plans:**
@@ -512,7 +520,7 @@ else:
                     st.error("⚠️ UTR Number bharna zaroori hai.")
 
     # 6. CHAT WITH ADMIN
-    with tabs[5]:
+    elif selected_menu == "💬 Chat with Admin":
         st.subheader("💬 Private Support Chat with Admin")
         with st.form("send_msg_form"):
             user_msg = st.text_area("Write Message:")
@@ -541,39 +549,38 @@ else:
             st.divider()
 
     # 7. ADMIN PANEL
-    if st.session_state.is_admin:
-        with tabs[6]:
-            st.subheader("👑 Admin Management Console")
-            pending_reqs = db_data.get("pending_requests", [])
-            if not pending_reqs:
-                st.info("Koi pending payment request nahi hai.")
-            else:
-                for idx, req in enumerate(pending_reqs):
-                    st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
-                    c1, c2 = st.columns(2)
-                    if c1.button("✅ Approve Request", key=f"app_{idx}"):
-                        u_email = req['email']
-                        plan_str = req['plan']
-                        coins_to_add = 50
-                        days_validity = 0
+    elif selected_menu == "👑 Admin Panel" and st.session_state.is_admin:
+        st.subheader("👑 Admin Management Console")
+        pending_reqs = db_data.get("pending_requests", [])
+        if not pending_reqs:
+            st.info("Koi pending payment request nahi hai.")
+        else:
+            for idx, req in enumerate(pending_reqs):
+                st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
+                c1, c2 = st.columns(2)
+                if c1.button("✅ Approve Request", key=f"app_{idx}"):
+                    u_email = req['email']
+                    plan_str = req['plan']
+                    coins_to_add = 50
+                    days_validity = 0
 
-                        if "300" in plan_str: coins_to_add = 300
-                        elif "600" in plan_str: coins_to_add = 600; days_validity = 7
-                        elif "999 Coins" in plan_str: coins_to_add = 999; days_validity = 30
-                        elif "VIP" in plan_str: coins_to_add = 99999; days_validity = 30
-                        
-                        db_data["users"][u_email] = db_data["users"].get(u_email, 0) + coins_to_add
-                        if days_validity > 0:
-                            exp_time = datetime.now() + timedelta(days=days_validity)
-                            db_data["subscriptions"][u_email] = {"plan": plan_str, "expiry": exp_time.strftime("%Y-%m-%d %H:%M:%S")}
+                    if "300" in plan_str: coins_to_add = 300
+                    elif "600" in plan_str: coins_to_add = 600; days_validity = 7
+                    elif "999 Coins" in plan_str: coins_to_add = 999; days_validity = 30
+                    elif "VIP" in plan_str: coins_to_add = 99999; days_validity = 30
+                    
+                    db_data["users"][u_email] = db_data["users"].get(u_email, 0) + coins_to_add
+                    if days_validity > 0:
+                        exp_time = datetime.now() + timedelta(days=days_validity)
+                        db_data["subscriptions"][u_email] = {"plan": plan_str, "expiry": exp_time.strftime("%Y-%m-%d %H:%M:%S")}
 
-                        db_data["pending_requests"].pop(idx)
-                        save_db(db_data)
-                        st.success("Approved!")
-                        st.rerun()
-                        
-                    if c2.button("❌ Reject Request", key=f"rej_{idx}"):
-                        db_data["pending_requests"].pop(idx)
-                        save_db(db_data)
-                        st.rerun()
-                    st.divider()
+                    db_data["pending_requests"].pop(idx)
+                    save_db(db_data)
+                    st.success("Approved!")
+                    st.rerun()
+                    
+                if c2.button("❌ Reject Request", key=f"rej_{idx}"):
+                    db_data["pending_requests"].pop(idx)
+                    save_db(db_data)
+                    st.rerun()
+                st.divider()
