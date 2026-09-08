@@ -1,7 +1,6 @@
 streamlit
-moviepy>=2.0.0
+moviepy==1.0.3
 numpy
-imageio>=2.30.0
+imageio
 imageio-ffmpeg
 requests
-proglog
