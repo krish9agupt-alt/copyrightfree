@@ -94,34 +94,103 @@ def generate_upi_qr(upi_id, amount, name="CR Copyright Free"):
     qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(pay_url)}"
     return qr_api_url
 
-# Enhanced UI Styling
+# Enhanced UI Styling (Reduced Top Padding, Compact Telegram Button & Custom Buttons)
 st.markdown("""
     <style>
     #MainMenu, header, footer {visibility: hidden;}
     .stApp { background-color: #0b0f17 !important; color: #e6edf3 !important; }
+    
+    /* Reduce top space */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
     p, span, label, div, li { color: #919eab !important; }
     h1, h2, h3, h4, h5, h6 { color: #ffffff !important; font-weight: 700 !important; }
     
-    .nav-container { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px 20px 0px; border-bottom: 1px solid #1e293b; margin-bottom: 25px; }
-    .brand-logo { font-size: 1.6rem; font-weight: 900; color: #ffffff !important; letter-spacing: -0.5px; }
+    .nav-container { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 5px 0px 10px 0px; 
+        border-bottom: 1px solid #1e293b; 
+        margin-bottom: 15px; 
+    }
+    
+    .brand-logo { font-size: 1.3rem; font-weight: 800; color: #ffffff !important; letter-spacing: -0.5px; white-space: nowrap; }
     .brand-logo span { color: #2fd1c5 !important; }
     
-    .pill-badge { background: rgba(47, 209, 197, 0.1); border: 1px solid rgba(47, 209, 197, 0.3); color: #2fd1c5 !important; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; margin-bottom: 15px; }
+    .pill-badge { background: rgba(47, 209, 197, 0.1); border: 1px solid rgba(47, 209, 197, 0.3); color: #2fd1c5 !important; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-block; margin-bottom: 10px; }
     
-    .stButton > button, div[data-testid="stDownloadButton"] > button { background-color: #2fd1c5 !important; color: #0b0f17 !important; font-weight: 700 !important; border-radius: 10px !important; border: none !important; width: 100%; height: 48px; transition: all 0.3s ease; }
+    .stButton > button, div[data-testid="stDownloadButton"] > button { background-color: #2fd1c5 !important; color: #0b0f17 !important; font-weight: 700 !important; border-radius: 10px !important; border: none !important; width: 100%; height: 44px; transition: all 0.3s ease; }
     .stButton > button:hover { background-color: #26b3a9 !important; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(47, 209, 197, 0.3); }
     
     div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { background-color: #161f2e !important; border: 1px solid #283548 !important; color: #ffffff !important; border-radius: 10px !important; }
     
-    div[data-testid="stRadio"] div[role="radiogroup"] { gap: 10px; }
-    div[data-testid="stRadio"] div[role="radiogroup"] > label { background-color: #121824 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; padding: 14px 20px !important; color: #ffffff !important; transition: border-color 0.2s; width: 100% !important; }
+    div[data-testid="stRadio"] div[role="radiogroup"] { gap: 8px; }
+    div[data-testid="stRadio"] div[role="radiogroup"] > label { background-color: #121824 !important; border: 1px solid #1e293b !important; border-radius: 10px !important; padding: 10px 14px !important; color: #ffffff !important; transition: border-color 0.2s; width: 100% !important; }
     div[data-testid="stRadio"] div[role="radiogroup"] > label:hover { border-color: #2fd1c5 !important; }
     
-    .tg-support-btn { background: linear-gradient(90deg, #0088cc, #00c6ff); color: #ffffff !important; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); }
+    /* Compact Telegram Support Button */
+    .tg-support-btn { 
+        background: linear-gradient(90deg, #0088cc, #00c6ff); 
+        color: #ffffff !important; 
+        padding: 6px 12px; 
+        border-radius: 8px; 
+        text-decoration: none; 
+        font-weight: 600; 
+        font-size: 0.82rem;
+        display: inline-flex; 
+        align-items: center; 
+        gap: 5px; 
+        box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3); 
+        white-space: nowrap;
+    }
     .tg-support-btn:hover { opacity: 0.95; color: #ffffff !important; }
+
+    /* Custom Task Action Buttons */
+    .yt-sub-btn {
+        background-color: #FF0000 !important;
+        color: #ffffff !important;
+        padding: 10px 20px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: 700;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+        margin-bottom: 12px;
+    }
+    .yt-sub-btn:hover { background-color: #cc0000 !important; color: #ffffff !important; }
+
+    .insta-follow-btn {
+        background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888) !important;
+        color: #ffffff !important;
+        padding: 10px 20px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: 700;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(220, 39, 67, 0.3);
+        margin-bottom: 12px;
+    }
+    .insta-follow-btn:hover { opacity: 0.9; color: #ffffff !important; }
+
+    .watch-vid-btn {
+        background: linear-gradient(90deg, #1f1f1f, #ff0000) !important;
+        color: #ffffff !important;
+        padding: 10px 20px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: 700;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(255, 0, 0, 0.2);
+        margin-bottom: 12px;
+    }
+    .watch-vid-btn:hover { opacity: 0.9; color: #ffffff !important; }
     
-    div[data-testid="stMetricValue"] { color: #2fd1c5 !important; font-weight: 800 !important; font-size: 2rem !important; }
-    .task-card { background: #121824; border: 1px solid #1e293b; padding: 20px; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    div[data-testid="stMetricValue"] { color: #2fd1c5 !important; font-weight: 800 !important; font-size: 1.8rem !important; }
+    .task-card { background: #121824; border: 1px solid #1e293b; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -197,13 +266,13 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     progress_bar.progress(100)
     status_text_holder.success("✅ Anti-Copyright Video Processing Completed!")
 
-# Top Header Layout
+# Compact Header Layout
 st.markdown(f"""
     <div class="nav-container">
         <div class="brand-logo">✨ CR-<span>copyright free</span></div>
         <div>
             <a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-6.2 2.397c-2.067.8-3.23 1.25-3.23 2.122c0 .538.356.914 1.135 1.18c.884.303 2.052.656 3.067.962c.31.093.618.183.91.272l11.455-7.182c.15-.094.3-.12.42-.08c.12.04.18.15.13.31c-.02.08-.08.18-.17.26l-9.336 8.42c-.08.08-.13.18-.14.29l-.36 3.73c-.05.51.27.98.76 1.12c.49.14 1.01-.06 1.25-.49l2.12-3.79l4.58 3.38c.67.5 1.58.38 2.09-.27c.21-.27.32-.61.32-.96l1.62-12.82c.08-.62-.17-1.24-.66-1.61c-.34-.26-.76-.38-1.18-.32z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-6.2 2.397c-2.067.8-3.23 1.25-3.23 2.122c0 .538.356.914 1.135 1.18c.884.303 2.052.656 3.067.962c.31.093.618.183.91.272l11.455-7.182c.15-.094.3-.12.42-.08c.12.04.18.15.13.31c-.02.08-.08.18-.17.26l-9.336 8.42c-.08.08-.13.18-.14.29l-.36 3.73c-.05.51.27.98.76 1.12c.49.14 1.01-.06 1.25-.49l2.12-3.79l4.58 3.38c.67.5 1.58.38 2.09-.27c.21-.27.32-.61.32-.96l1.62-12.82c.08-.62-.17-1.24-.66-1.61c-.34-.26-.76-.38-1.18-.32z"/></svg>
                 Telegram Support
             </a>
         </div>
@@ -213,10 +282,10 @@ st.markdown(f"""
 # Authentication & Dashboard Router
 if not st.session_state.logged_in:
     st.markdown("""
-        <div style="text-align: center; margin: 30px 0;">
+        <div style="text-align: center; margin: 15px 0;">
             <div class="pill-badge">✨ CR-copyright free Studio</div>
-            <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Remove Copyright Claims from Videos Instantly</h1>
-            <p>100% Automatic AI Bypass Engine for YouTube Shorts, Reels & Videos</p>
+            <h1 style="font-size: 2rem; margin-bottom: 8px;">Remove Copyright Claims from Videos Instantly</h1>
+            <p style="font-size: 0.9rem;">100% Automatic AI Bypass Engine for YouTube Shorts, Reels & Videos</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -345,13 +414,15 @@ else:
         st.subheader("🎁 Get Free Video Credits")
         st.write("Complete tasks below to earn 10 Free Credits per action!")
         
+        db_data = load_db()
         user_claims = db_data.get("claimed_tasks", {}).get(current_user, [])
         links = db_data.get("admin_links", {})
 
         # Task 1: YouTube
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
         st.markdown("### 🔴 Subscribe YouTube Channel (+10 Credits)")
-        st.markdown(f"**Step 1:** Open Link & Subscribe Channel: [Subscribe Here]({links.get('yt_url', '#')})")
+        st.markdown(f'<a href="{links.get("yt_url", "#")}" target="_blank" class="yt-sub-btn">🔴 Subscribe Now</a>', unsafe_allow_html=True)
+        
         if "youtube" in user_claims:
             st.success("✅ Already Claimed!")
         else:
@@ -368,7 +439,8 @@ else:
         # Task 2: Instagram
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
         st.markdown("### 📸 Follow on Instagram (+10 Credits)")
-        st.markdown(f"**Step 1:** Follow profile on Instagram: [Follow Here]({links.get('insta_url', '#')})")
+        st.markdown(f'<a href="{links.get("insta_url", "#")}" target="_blank" class="insta-follow-btn">📸 Follow Now</a>', unsafe_allow_html=True)
+        
         if "instagram" in user_claims:
             st.success("✅ Already Claimed!")
         else:
@@ -382,10 +454,10 @@ else:
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Task 3: Watch Video (180 Sec timer check)
+        # Task 3: Watch Video
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
         st.markdown("### ▶️ Watch Video for 180+ Seconds (+10 Credits)")
-        st.markdown(f"**Requirement:** Minimum 180 Seconds watch required: [Watch Video Here]({links.get('video_url', '#')})")
+        st.markdown(f'<a href="{links.get("video_url", "#")}" target="_blank" class="watch-vid-btn">▶️ Watch Video</a>', unsafe_allow_html=True)
         
         if "watch_video" in user_claims:
             st.success("✅ Already Claimed!")
@@ -414,7 +486,7 @@ else:
                         st.error(f"⚠️ Watch video minimum 180 seconds! ({remaining}s remaining)")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. RECHARGE & DYNAMIC QR PAY
+    # 3. RECHARGE & DYNAMIC QR PAY (Rule: 1 INR = 2 Coins)
     elif selected_menu == "🪙 Recharge & Dynamic QR Pay":
         st.subheader("🪙 Account Recharge via Dynamic UPI QR")
         links = db_data.get("admin_links", {})
@@ -424,21 +496,31 @@ else:
         
         with col_pay1:
             st.markdown("### 1. Payment QR Code")
-            enter_amount = st.number_input("Enter Amount to Recharge (₹):", min_value=10, max_value=5000, value=149)
+            enter_amount = st.number_input("Enter Amount to Recharge (₹):", min_value=5, max_value=5000, value=50)
+            calculated_coins = enter_amount * 2
+            
+            st.success(f"🎉 Rule (1 INR = 2 Coins): You will get **{calculated_coins} Coins**")
             
             dynamic_qr = generate_upi_qr(active_upi, enter_amount)
-            st.image(dynamic_qr, caption=f"Scan & Pay ₹{enter_amount} to {active_upi}", width=250)
+            st.image(dynamic_qr, caption=f"Scan & Pay ₹{enter_amount} to {active_upi}", width=220)
             st.info(f"💳 Direct UPI ID: `{active_upi}`")
 
         with col_pay2:
             st.markdown("### 2. Submit Transaction Proof")
             with st.form("buy_coins_form"):
                 utr_no = st.text_input("Enter UTR / Transaction Ref No.")
-                plan_label = f"Recharge Pack - ₹{enter_amount}"
+                plan_label = f"Recharge ₹{enter_amount} ({calculated_coins} Coins)"
                 if st.form_submit_button("📩 Submit UTR for Admin Approval"):
                     if utr_no.strip():
                         if "pending_requests" not in db_data: db_data["pending_requests"] = []
-                        db_data["pending_requests"].append({"email": current_user, "utr": utr_no.strip(), "plan": plan_label, "amount": enter_amount, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                        db_data["pending_requests"].append({
+                            "email": current_user, 
+                            "utr": utr_no.strip(), 
+                            "plan": plan_label, 
+                            "amount": enter_amount, 
+                            "coins": calculated_coins,
+                            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
                         save_db(db_data)
                         st.success("✅ Payment Details Submitted! Admin will approve coins shortly.")
 
@@ -510,10 +592,12 @@ else:
         
         tab1, tab2, tab3 = st.tabs(["🔗 Dynamic Link Settings", "💬 Message Desk", "🪙 Payment Approvals"])
         
-        # TAB 1: LINKS MANAGEMENT
+        # TAB 1: LINKS MANAGEMENT (FIXED persistent save)
         with tab1:
             st.markdown("### Update Task Links & System UPI")
-            curr_links = db_data.get("admin_links", {})
+            curr_db = load_db()
+            curr_links = curr_db.get("admin_links", {})
+            
             with st.form("links_form"):
                 yt = st.text_input("YouTube Channel Subscribe Link", value=curr_links.get("yt_url", ""))
                 insta = st.text_input("Instagram Follow Profile Link", value=curr_links.get("insta_url", ""))
@@ -521,9 +605,15 @@ else:
                 upi = st.text_input("Default Payment UPI ID", value=curr_links.get("upi_id", UPI_ID_TEXT))
                 
                 if st.form_submit_button("💾 Save All Settings"):
-                    db_data["admin_links"] = {"yt_url": yt, "insta_url": insta, "video_url": vid, "upi_id": upi}
-                    save_db(db_data)
-                    st.success("✅ All Links & System UPI Updated!")
+                    curr_db["admin_links"] = {
+                        "yt_url": yt.strip(), 
+                        "insta_url": insta.strip(), 
+                        "video_url": vid.strip(), 
+                        "upi_id": upi.strip()
+                    }
+                    save_db(curr_db)
+                    st.success("✅ All Links & System UPI Updated Successfully!")
+                    st.rerun()
 
         # TAB 2: SUPPORT DESK REPLIES
         with tab2:
@@ -552,8 +642,9 @@ else:
             if not pending_reqs:
                 st.write("No pending requests.")
             for idx, req in enumerate(pending_reqs):
+                default_grant = req.get("coins", req.get("amount", 10) * 2)
                 st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
-                add_c = st.number_input("Credits to Grant:", min_value=1, value=100, key=f"c_{idx}")
+                add_c = st.number_input("Credits to Grant:", min_value=1, value=default_grant, key=f"c_{idx}")
                 if st.button("✅ Approve Payment", key=f"app_{idx}"):
                     db_data["users"][req['email']] = db_data["users"].get(req['email'], 0) + add_c
                     db_data["pending_requests"].pop(idx)
