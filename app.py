@@ -24,12 +24,11 @@ def get_render_lock():
 
 RENDER_LOCK = get_render_lock()
 
-st.set_page_config(page_title="No Copyright Video Studio Pro", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="CR Removes - AI Copyright Remover", page_icon="✨", layout="wide")
 
 DB_FILE = "database.json"
 TELEGRAM_SUPPORT_URL = "https://t.me/+Yhr7ZJWcqBwyNmFl"
 UPI_ID_TEXT = "cinepoliis@ibl"
-BG_IMAGE_URL = "https://i.postimg.cc/P5P1CkHY/no.png"
 EXPORT_DIR = "exports"
 
 os.makedirs(EXPORT_DIR, exist_ok=True)
@@ -77,45 +76,141 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Custom CSS Styling
-st.markdown(f"""
+# -------------------------------------------------------------
+# 🎨 CUSTOM SAAS DARK MODE CSS (CR REMOVES THEME MATCH)
+# -------------------------------------------------------------
+st.markdown("""
     <style>
-    #MainMenu, header, footer {{visibility: hidden;}}
-    .stApp {{
-        background-image: url("{BG_IMAGE_URL}");
-        background-size: cover; background-position: center; background-attachment: fixed;
-        color: #FFFFFF !important;
-    }}
-    .stApp > div {{
-        background: rgba(0, 0, 0, 0.85) !important; padding: 20px;
-        border-radius: 15px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px);
-    }}
-    p, span, label, div, li, h1, h2, h3, h4 {{
-        color: #FFFFFF !important; text-shadow: 1px 1px 2px #000000 !important;
-    }}
-    .main-header {{
-        text-align: left; font-weight: 900; font-size: 2.2rem;
-        background: linear-gradient(45deg, #FFD700, #FF69B4);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }}
-    div[data-testid="stRadio"] > label {{
-        font-weight: bold !important; font-size: 1.1rem !important; color: #FFD700 !important;
-    }}
-    div[data-testid="stRadio"] div[role="radiogroup"] > label {{
-        background: rgba(255, 255, 255, 0.1) !important; padding: 10px 15px !important;
-        border-radius: 8px !important; margin-bottom: 6px !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important; width: 100% !important;
-    }}
-    .tg-support-btn {{
-        float: right; background: linear-gradient(90deg, #0088cc, #00c6ff);
-        color: white !important; padding: 8px 16px; border-radius: 20px;
-        text-decoration: none; font-weight: bold;
-    }}
+    /* Dark Theme Core Setup */
+    #MainMenu, header, footer {visibility: hidden;}
+    
+    .stApp {
+        background-color: #0b0f17 !important;
+        color: #e6edf3 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    /* Global Typography Fixes */
+    p, span, label, div, li {
+        color: #919eab !important;
+        text-shadow: none !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-shadow: none !important;
+    }
+
+    /* Top Navigation Bar Simulation */
+    .nav-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0px 20px 0px;
+        border-bottom: 1px solid #1e293b;
+        margin-bottom: 25px;
+    }
+    
+    .brand-logo {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #ffffff !important;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .brand-logo span {
+        color: #2fd1c5 !important;
+    }
+
+    /* SaaS Badges & Cards */
+    .pill-badge {
+        background: rgba(47, 209, 197, 0.1);
+        border: 1px solid rgba(47, 209, 197, 0.3);
+        color: #2fd1c5 !important;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .saas-card {
+        background-color: #121824;
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+
+    /* Primary Accent Cyan Buttons */
+    .stButton > button, div[data-testid="stDownloadButton"] > button {
+        background-color: #2fd1c5 !important;
+        color: #0b0f17 !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+        border: none !important;
+        padding: 10px 24px !important;
+        transition: all 0.2s ease-in-out;
+        width: 100%;
+    }
+    
+    .stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
+        background-color: #26b3a9 !important;
+        color: #0b0f17 !important;
+        box-shadow: 0 4px 12px rgba(47, 209, 197, 0.3);
+    }
+
+    /* Inputs, Radio Buttons & Selectboxes */
+    div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
+        background-color: #161f2e !important;
+        border: 1px solid #283548 !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] > label {
+        background-color: #121824 !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 10px !important;
+        padding: 12px 18px !important;
+        margin-bottom: 8px !important;
+        color: #e6edf3 !important;
+        width: 100% !important;
+    }
+    
+    div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
+        border-color: #2fd1c5 !important;
+    }
+
+    /* Telegram Header Button */
+    .tg-support-btn {
+        background-color: #2fd1c5;
+        color: #0b0f17 !important;
+        padding: 8px 18px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: opacity 0.2s;
+    }
+    .tg-support-btn:hover {
+        opacity: 0.9;
+    }
+    
+    /* Metrics Customization */
+    div[data-testid="stMetricValue"] {
+        color: #2fd1c5 !important;
+        font-weight: 800 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------
-# 🛡️ ADVANCED ANTI-COPYRIGHT ENGINE (ZOOM + SPEED + COLOR + FLIP)
+# 🛡️ ADVANCED ANTI-COPYRIGHT ENGINE
 # -------------------------------------------------------------
 def manual_zoom(clip, zoom_factor):
     def zoom_frame(image):
@@ -129,7 +224,6 @@ def manual_zoom(clip, zoom_factor):
     return clip.fl_image(zoom_frame)
 
 def apply_anti_copyright_effects(clip, edit_num=1):
-    # Dynamic Multi-Layer Effects for 100% Copyright Bypass
     if edit_num % 5 == 0:
         clip = manual_zoom(clip, 1.08)
         clip = clip.fx(vfx.colorx, 1.05)
@@ -138,7 +232,7 @@ def apply_anti_copyright_effects(clip, edit_num=1):
         clip = clip.fx(vfx.colorx, 0.96)
     elif edit_num % 3 == 0:
         clip = manual_zoom(clip, 1.05)
-        clip = clip.fl_image(lambda img: img[:, ::-1])  # Horizontal Mirror Flip
+        clip = clip.fl_image(lambda img: img[:, ::-1])
     elif edit_num % 2 == 0:
         clip = clip.speedx(1.03)
         clip = manual_zoom(clip, 1.06)
@@ -147,10 +241,9 @@ def apply_anti_copyright_effects(clip, edit_num=1):
         clip = clip.fx(vfx.colorx, 1.03)
     return clip
 
-# Full Single Video Processor
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
     start_time = time.time()
-    status_text_holder.info("🎬 Video load aur analyze ho raha hai...")
+    status_text_holder.info("🎬 Loading & Analyzing video stream...")
     progress_bar.progress(5)
     
     video = VideoFileClip(input_path)
@@ -175,7 +268,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
         progress_bar.progress(pct)
         time.sleep(0.2)
 
-    status_text_holder.warning("⚙️ Anti-Copyright Effects Apply & Render Ho Raha Hai...")
+    status_text_holder.warning("⚙️ Injecting AI Anti-Copyright Algorithm & Rendering...")
     progress_bar.progress(85)
     
     final_clip.write_videofile(
@@ -190,34 +283,55 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
 
     total_elapsed = int(time.time() - start_time)
     progress_bar.progress(100)
-    status_text_holder.success(f"✅ Full Anti-Copyright Video Render Complete ({total_elapsed} sec)!")
+    status_text_holder.success(f"✅ AI Content Optimization Complete ({total_elapsed} sec)!")
 
-# Header Bar
-col_title, col_support = st.columns([3, 1])
-with col_title: st.markdown("<h1 class='main-header'>🎬 NO COPYRIGHT VIDEO STUDIO PRO</h1>", unsafe_allow_html=True)
-with col_support: st.markdown(f'<a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">✈️ Telegram Support</a>', unsafe_allow_html=True)
+# -------------------------------------------------------------
+#  NAVBAR HEADER
+# -------------------------------------------------------------
+st.markdown(f"""
+    <div class="nav-container">
+        <div class="brand-logo">✨ CR <span>Removes</span></div>
+        <div>
+            <a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">Support Community</a>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
-st.divider()
-
+# -------------------------------------------------------------
+# LOGIN & DASHBOARD VIEW
+# -------------------------------------------------------------
 if not st.session_state.logged_in:
-    st.subheader("🔑 Sign In")
-    with st.form("login_form"):
-        email = st.text_input("Enter Email Address")
-        passcode = st.text_input("Access Passcode", value=USER_PASSCODE, type="password")
-        if st.form_submit_button("🚀 Enter Dashboard"):
-            clean_email = email.lower().strip()
-            if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
-                st.session_state.logged_in = True
-                st.session_state.user_email = clean_email
-                st.session_state.is_admin = True
-                st.rerun()
-            elif clean_email and (passcode == USER_PASSCODE or hash_text(passcode) == ADMIN_PASSCODE_HASH):
-                db = load_db()
-                if clean_email not in db["users"]: db["users"][clean_email] = 10; save_db(db)
-                st.session_state.logged_in = True
-                st.session_state.user_email = clean_email
-                st.session_state.is_admin = False
-                st.rerun()
+    st.markdown("""
+        <div style="text-align: center; margin: 30px 0;">
+            <div class="pill-badge">✨ AI CR Removes. Studio finish.</div>
+            <h1 style="font-size: 2.8rem; margin-bottom: 10px;">Remove Copyright Claims from Your YouTube Videos Instantly</h1>
+            <p style="font-size: 1.1rem; max-width: 650px; margin: 0 auto 30px auto;">
+                Copyright Remover - Professional AI deep-clean technology. Upload your video below to simulate advanced content optimization.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col_center, _ = st.columns([1, 0.01])
+    with col_center:
+        st.subheader("Sign in to your Dashboard")
+        with st.form("login_form"):
+            email = st.text_input("Email Address", placeholder="name@domain.com")
+            passcode = st.text_input("Access Passcode", value=USER_PASSCODE, type="password")
+            if st.form_submit_button("Sign In →"):
+                clean_email = email.lower().strip()
+                if hash_text(clean_email) == ADMIN_EMAIL_HASH and hash_text(passcode) == ADMIN_PASSCODE_HASH:
+                    st.session_state.logged_in = True
+                    st.session_state.user_email = clean_email
+                    st.session_state.is_admin = True
+                    st.rerun()
+                elif clean_email and (passcode == USER_PASSCODE or hash_text(passcode) == ADMIN_PASSCODE_HASH):
+                    db = load_db()
+                    if clean_email not in db["users"]: db["users"][clean_email] = 10; save_db(db)
+                    st.session_state.logged_in = True
+                    st.session_state.user_email = clean_email
+                    st.session_state.is_admin = False
+                    st.rerun()
+
 else:
     current_user = st.session_state.user_email
     db_data = load_db()
@@ -234,26 +348,28 @@ else:
         else: expiry_display = "⚠️ Plan Expired!"
 
     col_m1, col_m2, col_logout = st.columns([2, 2, 1])
-    with col_m1: st.metric("Available Coins", f"🪙 {user_coins}")
+    with col_m1: st.metric("Available Balance", f"🪙 {user_coins} Credits")
     with col_m2: st.metric("Plan Status", expiry_display)
     with col_logout:
-        if st.button("🚪 Logout"):
+        if st.button("Sign Out"):
             st.session_state.logged_in = False
             st.rerun()
 
     st.divider()
 
-    menu_options = ["📹 Studio Processor", "📁 Output Library Manager", "🧹 Library Cleaner", "🪙 Buy Coins / Subscriptions", "💬 Chat with Admin"]
+    menu_options = ["📹 Studio Processor", "📁 Output Library Manager", "🧹 Library Cleaner", "🪙 Prepaid Packs / Pricing", "💬 Direct Admin Support"]
     if st.session_state.is_admin: menu_options.append("👑 Admin Panel")
     
-    selected_menu = st.radio("📌 Select Option / Navigation Menu:", menu_options)
+    selected_menu = st.radio("Navigation Menu:", menu_options)
     st.divider()
 
-    # 1. STUDIO PROCESSOR (ANTI-COPYRIGHT + CLIPPING MODE)
+    # 1. STUDIO PROCESSOR
     if selected_menu == "📹 Studio Processor":
-        st.subheader("📹 Anti-Copyright Studio & Video Auto-Clipper")
+        st.markdown('<div class="pill-badge">Upload & Process</div>', unsafe_allow_html=True)
+        st.subheader("Upload securely")
+        st.write("Drag and drop your video file below into private processing storage.")
         
-        uploaded_file = st.file_uploader("Upload Long / Short Video File", type=["mp4", "mov", "mkv", "avi"])
+        uploaded_file = st.file_uploader("Select Video File", type=["mp4", "mov", "mkv", "avi"])
         
         if uploaded_file:
             process_mode = st.radio("Select Processing Mode:", [
@@ -261,13 +377,13 @@ else:
                 "2. Anti-Copyright Clipping & Trimming Mode (Multiple Parts)"
             ])
             
-            # MODE 1: SINGLE FULL VIDEO EDIT
+            # MODE 1
             if process_mode == "1. Full Anti-Copyright Video Processor (Single File)":
                 quality_option = st.radio("Select Export Quality:", ["720p HD (Free - 0 Coin)", "1080p Full HD (5 Coins)", "2K / 4K Ultra HD (10 Coins)"])
                 res_config = {"720p HD (Free - 0 Coin)": (720, "4000k", 0), "1080p Full HD (5 Coins)": (1080, "12000k", 5), "2K / 4K Ultra HD (10 Coins)": (2160, "45000k", 10)}
                 target_height, bitrate, required_coins = res_config[quality_option]
 
-                if st.button("🚀 Render Full Anti-Copyright Video"):
+                if st.button("🚀 Process Video Now"):
                     if user_coins < required_coins and not st.session_state.is_admin:
                         st.error(f"❌ Iss quality ke liye {required_coins} Coins chahiye.")
                     else:
@@ -288,28 +404,28 @@ else:
                                 db_data["history"][current_user].append({"filename": uploaded_file.name, "path": out_path, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                                 save_db(db_data)
 
-                                st.success("🎉 Video Render Complete!")
+                                st.success("🎉 Processing complete!")
                                 with open(out_path, "rb") as f:
-                                    st.download_button("📥 Direct Download Anti-Copyright Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4", use_container_width=True)
-                            except Exception as e: st.error(f"Error aaya: {e}")
+                                    st.download_button("📥 Download Optimized Video", f, file_name=f"edited_{uploaded_file.name}", mime="video/mp4")
+                            except Exception as e: st.error(f"Error: {e}")
                             finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-            # MODE 2: CLIPPING MODE (AUTO INTERVAL / CUSTOM TIMESTAMPS + ANTI-COPYRIGHT)
+            # MODE 2
             elif process_mode == "2. Anti-Copyright Clipping & Trimming Mode (Multiple Parts)":
                 clip_mode = st.radio("Clipping Mode:", ["Auto-Interval", "Custom Timestamps"])
                 
                 if clip_mode == "Auto-Interval":
                     interval_sec = st.number_input("Interval duration (Seconds):", min_value=5, max_value=600, value=10)
                 else:
-                    timestamps_input = st.text_input("Timestamps (format in seconds: 0-10, 15-30):", value="0-10, 15-30")
+                    timestamps_input = st.text_input("Timestamps (seconds: e.g. 0-10, 15-30):", value="0-10, 15-30")
 
-                if st.button("✂️ Cut, Edit & Generate Anti-Copyright Clips"):
+                if st.button("✂️ Generate Optimized Clips"):
                     with RENDER_LOCK:
                         temp_in = f"temp_in_{int(time.time())}.mp4"
                         try:
                             with open(temp_in, "wb") as f: f.write(uploaded_file.read())
                             
-                            with st.spinner("⏳ Video clips me cut aur Anti-Copyright effects apply ho rahe hain..."):
+                            with st.spinner("⏳ Cutting & applying Anti-Copyright bypass layers..."):
                                 video = VideoFileClip(temp_in)
                                 generated_clips = []
 
@@ -324,7 +440,7 @@ else:
                                         
                                         out_clip_path = f"{EXPORT_DIR}/clip_{count}_{int(time.time())}.mp4"
                                         edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                        generated_clips.append((f"AntiCopyright_Clip_{count}.mp4", out_clip_path))
+                                        generated_clips.append((f"Clip_{count}.mp4", out_clip_path))
                                         curr += interval_sec
                                         count += 1
                                 else:
@@ -336,28 +452,28 @@ else:
                                         
                                         out_clip_path = f"{EXPORT_DIR}/custom_clip_{idx+1}_{int(time.time())}.mp4"
                                         edited_subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-                                        generated_clips.append((f"AntiCopyright_Custom_Clip_{idx+1}.mp4", out_clip_path))
+                                        generated_clips.append((f"Custom_Clip_{idx+1}.mp4", out_clip_path))
 
                                 video.close()
 
-                                st.success(f"🎉 Total {len(generated_clips)} Anti-Copyright Clips Tayar Hain!")
+                                st.success(f"🎉 Generated {len(generated_clips)} optimized clips!")
                                 for name, path in generated_clips:
                                     with open(path, "rb") as f:
                                         st.download_button(f"📥 Download {name}", f, file_name=name, key=path)
 
                         except Exception as e:
-                            st.error(f"❌ Error aaya: {e}")
+                            st.error(f"❌ Error: {e}")
                         finally:
                             auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
     # 2. OUTPUT LIBRARY MANAGER
     elif selected_menu == "📁 Output Library Manager":
         st.subheader("📁 Output Library Manager")
-        if st.button("🔄 Refresh Output Library"): st.rerun()
+        if st.button("🔄 Refresh Library"): st.rerun()
             
         all_exports = glob.glob(os.path.join(EXPORT_DIR, "*"))
         if not all_exports:
-            st.warning("⚠️ Abhi library me koi files maujood nahi hain.")
+            st.info("No processed files available in your library yet.")
         else:
             for filepath in all_exports:
                 if os.path.isfile(filepath):
@@ -374,7 +490,7 @@ else:
     # 3. LIBRARY CLEANER
     elif selected_menu == "🧹 Library Cleaner":
         st.subheader("🧹 System Storage & Library Cleaner")
-        if st.button("🚨 Clear Entire Library"):
+        if st.button("🚨 Purge Entire Library Cache"):
             deleted_count = 0
             if os.path.exists(EXPORT_DIR):
                 for file_path in glob.glob(os.path.join(EXPORT_DIR, "*")):
@@ -385,40 +501,50 @@ else:
             st.success(f"✅ Library Cleaned! Total {deleted_count} files removed.")
             st.rerun()
 
-    # 4. BUY COINS
-    elif selected_menu == "🪙 Buy Coins / Subscriptions":
-        st.subheader("🪙 Recharge Coins & Buy Plans")
-        st.write("UPI ID: " + UPI_ID_TEXT)
+    # 4. PREPAID PACKS / PRICING
+    elif selected_menu == "🪙 Prepaid Packs / Pricing":
+        st.subheader("Prepaid video packs")
+        st.write("Every plan is a prepaid pack. Choose your required package to continue uninterrupted processing.")
+        st.info(f"💳 Direct UPI Deposit ID: **{UPI_ID_TEXT}**")
+        
         with st.form("buy_coins_form"):
-            utr_no = st.text_input("Enter UTR Reference No.")
-            selected_plan = st.selectbox("Select Plan", ["₹49 - 50 Coins", "₹199 - 300 Coins", "₹249 - 600 Coins (Weekly)", "₹399 - 999 Coins (Monthly)", "₹999 - VIP Unlimited"])
-            if st.form_submit_button("📩 Submit Payment Request"):
+            utr_no = st.text_input("UTR Reference Number (Post Payment)")
+            selected_plan = st.selectbox("Select Plan", [
+                "Basic - ₹149 (16 Videos / 28 Days)",
+                "Standard - ₹249 (35 Videos / 28 Days)",
+                "Pro - ₹399 (999 Credits / Monthly)",
+                "VIP Unlimited - ₹999 (Yearly Unlimited)"
+            ])
+            if st.form_submit_button("Choose Plan / Submit Request"):
                 if utr_no.strip():
                     if "pending_requests" not in db_data: db_data["pending_requests"] = []
                     db_data["pending_requests"].append({"email": current_user, "utr": utr_no.strip(), "plan": selected_plan, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                     save_db(db_data)
-                    st.success("✅ Payment Request Submitted!")
+                    st.success("✅ Payment Request Submitted! Your account will be updated shortly.")
 
     # 5. CHAT WITH ADMIN
-    elif selected_menu == "💬 Chat with Admin":
-        st.subheader("💬 Private Support Chat")
+    elif selected_menu == "💬 Direct Admin Support":
+        st.subheader("💬 Private Support Desk")
         with st.form("send_msg_form"):
-            user_msg = st.text_area("Write Message:")
-            if st.form_submit_button("📤 Send"):
+            user_msg = st.text_area("How can we help you?")
+            if st.form_submit_button("📤 Submit Ticket"):
                 if user_msg.strip():
                     ticket = {"id": int(time.time()), "user": current_user, "msg": user_msg.strip(), "reply": "", "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                     if "support_tickets" not in db_data: db_data["support_tickets"] = []
                     db_data["support_tickets"].append(ticket)
                     save_db(db_data)
+                    st.success("Ticket sent successfully!")
                     st.rerun()
 
     # 6. ADMIN PANEL
     elif selected_menu == "👑 Admin Panel" and st.session_state.is_admin:
-        st.subheader("👑 Admin Console")
+        st.subheader("👑 Admin Management Console")
         pending_reqs = db_data.get("pending_requests", [])
+        if not pending_reqs:
+            st.write("No pending requests.")
         for idx, req in enumerate(pending_reqs):
             st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
-            if st.button("✅ Approve", key=f"app_{idx}"):
+            if st.button("✅ Approve Access", key=f"app_{idx}"):
                 db_data["users"][req['email']] = db_data["users"].get(req['email'], 0) + 500
                 db_data["pending_requests"].pop(idx)
                 save_db(db_data)
