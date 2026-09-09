@@ -3,6 +3,7 @@ import time, json, os, hashlib, gc, glob, threading
 import numpy as np
 import PIL.Image
 from datetime import datetime
+import urllib.parse
 
 # MoviePy Compatibility Patch
 if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -21,7 +22,7 @@ def get_render_lock():
 
 RENDER_LOCK = get_render_lock()
 
-st.set_page_config(page_title="CR Removes - AI Copyright Remover", page_icon="✨", layout="wide")
+st.set_page_config(page_title="CR-copyright free", page_icon="✨", layout="wide")
 
 DB_FILE = "database.json"
 TELEGRAM_SUPPORT_URL = "https://t.me/+Yhr7ZJWcqBwyNmFl"
@@ -37,7 +38,7 @@ ADMIN_EMAIL_HASH = hash_text("krish9agupt@gmail.com")
 ADMIN_PASSCODE_HASH = hash_text("Krish9A")
 USER_PASSCODE = "123456"
 
-# Auto Cleanup
+# Auto Cleanup System
 def auto_cleanup_storage_and_memory(temp_file_path=None, max_age_hours=24):
     if temp_file_path and os.path.exists(temp_file_path):
         try: os.remove(temp_file_path)
@@ -65,7 +66,7 @@ def load_db():
             "yt_url": "https://youtube.com",
             "insta_url": "https://instagram.com",
             "video_url": "https://youtube.com",
-            "qr_url": "https://i.postimg.cc/P5P1CkHY/no.png"
+            "upi_id": "cinepoliis@ibl"
         }
     }
     if not os.path.exists(DB_FILE):
@@ -87,24 +88,40 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 
-# Styling
+# Dynamic QR Code Generator URL Function
+def generate_upi_qr(upi_id, amount, name="CR Copyright Free"):
+    pay_url = f"upi://pay?pa={upi_id}&pn={urllib.parse.quote(name)}&am={amount}&cu=INR"
+    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(pay_url)}"
+    return qr_api_url
+
+# Enhanced UI Styling
 st.markdown("""
     <style>
     #MainMenu, header, footer {visibility: hidden;}
     .stApp { background-color: #0b0f17 !important; color: #e6edf3 !important; }
     p, span, label, div, li { color: #919eab !important; }
     h1, h2, h3, h4, h5, h6 { color: #ffffff !important; font-weight: 700 !important; }
-    .nav-container { display: flex; justify-content: space-between; align-items: center; padding: 10px 0px 20px 0px; border-bottom: 1px solid #1e293b; margin-bottom: 25px; }
-    .brand-logo { font-size: 1.5rem; font-weight: 800; color: #ffffff !important; }
+    
+    .nav-container { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px 20px 0px; border-bottom: 1px solid #1e293b; margin-bottom: 25px; }
+    .brand-logo { font-size: 1.6rem; font-weight: 900; color: #ffffff !important; letter-spacing: -0.5px; }
     .brand-logo span { color: #2fd1c5 !important; }
+    
     .pill-badge { background: rgba(47, 209, 197, 0.1); border: 1px solid rgba(47, 209, 197, 0.3); color: #2fd1c5 !important; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; margin-bottom: 15px; }
-    .stButton > button, div[data-testid="stDownloadButton"] > button { background-color: #2fd1c5 !important; color: #0b0f17 !important; font-weight: 700 !important; border-radius: 10px !important; border: none !important; width: 100%; }
-    .stButton > button:hover { background-color: #26b3a9 !important; }
+    
+    .stButton > button, div[data-testid="stDownloadButton"] > button { background-color: #2fd1c5 !important; color: #0b0f17 !important; font-weight: 700 !important; border-radius: 10px !important; border: none !important; width: 100%; height: 48px; transition: all 0.3s ease; }
+    .stButton > button:hover { background-color: #26b3a9 !important; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(47, 209, 197, 0.3); }
+    
     div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { background-color: #161f2e !important; border: 1px solid #283548 !important; color: #ffffff !important; border-radius: 10px !important; }
-    div[data-testid="stRadio"] div[role="radiogroup"] > label { background-color: #121824 !important; border: 1px solid #1e293b !important; border-radius: 10px !important; padding: 12px 18px !important; margin-bottom: 8px !important; width: 100% !important; }
-    .tg-support-btn { background-color: #2fd1c5; color: #0b0f17 !important; padding: 8px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; }
-    div[data-testid="stMetricValue"] { color: #2fd1c5 !important; font-weight: 800 !important; }
-    .task-card { background: #121824; border: 1px solid #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+    
+    div[data-testid="stRadio"] div[role="radiogroup"] { gap: 10px; }
+    div[data-testid="stRadio"] div[role="radiogroup"] > label { background-color: #121824 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; padding: 14px 20px !important; color: #ffffff !important; transition: border-color 0.2s; width: 100% !important; }
+    div[data-testid="stRadio"] div[role="radiogroup"] > label:hover { border-color: #2fd1c5 !important; }
+    
+    .tg-support-btn { background: linear-gradient(90deg, #0088cc, #00c6ff); color: #ffffff !important; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); }
+    .tg-support-btn:hover { opacity: 0.95; color: #ffffff !important; }
+    
+    div[data-testid="stMetricValue"] { color: #2fd1c5 !important; font-weight: 800 !important; font-size: 2rem !important; }
+    .task-card { background: #121824; border: 1px solid #1e293b; padding: 20px; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -140,7 +157,7 @@ def apply_anti_copyright_effects(clip, edit_num=1):
 
 def process_single_video(input_path, output_path, target_height, bitrate, progress_bar, status_text_holder):
     start_time = time.time()
-    status_text_holder.info("🎬 Video load ho rahi hai...")
+    status_text_holder.info("🎬 Video Stream Analyze & Load ho raha hai...")
     progress_bar.progress(5)
     
     video = VideoFileClip(input_path)
@@ -164,7 +181,7 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
         progress_bar.progress(pct)
         time.sleep(0.2)
 
-    status_text_holder.warning("⚙️ Processing & Anti-Copyright Engine running...")
+    status_text_holder.warning("⚙️ AI Anti-Copyright Filters Inject Ho Rahe Hain...")
     progress_bar.progress(85)
     
     final_clip.write_videofile(
@@ -178,27 +195,33 @@ def process_single_video(input_path, output_path, target_height, bitrate, progre
     except Exception: pass
 
     progress_bar.progress(100)
-    status_text_holder.success("✅ Complete!")
+    status_text_holder.success("✅ Anti-Copyright Video Processing Completed!")
 
-# Header
+# Top Header Layout
 st.markdown(f"""
     <div class="nav-container">
-        <div class="brand-logo">✨ CR <span>Removes</span></div>
-        <div><a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">Support Community</a></div>
+        <div class="brand-logo">✨ CR-<span>copyright free</span></div>
+        <div>
+            <a href="{TELEGRAM_SUPPORT_URL}" target="_blank" class="tg-support-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-6.2 2.397c-2.067.8-3.23 1.25-3.23 2.122c0 .538.356.914 1.135 1.18c.884.303 2.052.656 3.067.962c.31.093.618.183.91.272l11.455-7.182c.15-.094.3-.12.42-.08c.12.04.18.15.13.31c-.02.08-.08.18-.17.26l-9.336 8.42c-.08.08-.13.18-.14.29l-.36 3.73c-.05.51.27.98.76 1.12c.49.14 1.01-.06 1.25-.49l2.12-3.79l4.58 3.38c.67.5 1.58.38 2.09-.27c.21-.27.32-.61.32-.96l1.62-12.82c.08-.62-.17-1.24-.66-1.61c-.34-.26-.76-.38-1.18-.32z"/></svg>
+                Telegram Support
+            </a>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
-# Authentication
+# Authentication & Dashboard Router
 if not st.session_state.logged_in:
     st.markdown("""
         <div style="text-align: center; margin: 30px 0;">
-            <div class="pill-badge">✨ AI CR Removes</div>
-            <h1>Remove Copyright Claims Instantly</h1>
+            <div class="pill-badge">✨ CR-copyright free Studio</div>
+            <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Remove Copyright Claims from Videos Instantly</h1>
+            <p>100% Automatic AI Bypass Engine for YouTube Shorts, Reels & Videos</p>
         </div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
-        email = st.text_input("Email Address")
+        email = st.text_input("Enter Email Address")
         passcode = st.text_input("Access Passcode", value=USER_PASSCODE, type="password")
         if st.form_submit_button("Sign In →"):
             clean_email = email.lower().strip()
@@ -222,7 +245,7 @@ else:
     
     col_m1, col_m2, col_logout = st.columns([2, 2, 1])
     with col_m1: st.metric("Available Balance", f"🪙 {user_coins} Credits")
-    with col_m2: st.metric("Account", "Admin" if st.session_state.is_admin else "Standard User")
+    with col_m2: st.metric("User Status", "👑 Admin Account" if st.session_state.is_admin else "Active Member")
     with col_logout:
         if st.button("Sign Out"):
             st.session_state.logged_in = False
@@ -233,20 +256,20 @@ else:
     menu_options = [
         "📹 Studio Processor", 
         "🎁 Free Credits Tasks", 
-        "🪙 Buy Coins / QR Pay", 
-        "📁 Output Library", 
-        "🧹 Library Cleaner", 
-        "💬 Chat Support"
+        "🪙 Recharge & Dynamic QR Pay", 
+        "📁 Output Library Manager", 
+        "🧹 Storage Cleaner", 
+        "💬 Chat Support Desk"
     ]
     if st.session_state.is_admin: menu_options.append("👑 Admin Panel")
     
-    selected_menu = st.radio("Navigation Menu:", menu_options)
+    selected_menu = st.radio("📌 Navigation Menu:", menu_options)
     st.divider()
 
-    # 1. STUDIO PROCESSOR (NEW COIN DEDUCTION LOGIC)
+    # 1. STUDIO PROCESSOR
     if selected_menu == "📹 Studio Processor":
-        st.subheader("📹 Anti-Copyright Video Studio")
-        uploaded_file = st.file_uploader("Upload Video File", type=["mp4", "mov", "mkv", "avi"])
+        st.subheader("📹 Anti-Copyright Video Processing Studio")
+        uploaded_file = st.file_uploader("Upload Video File (MP4, MOV, MKV, AVI)", type=["mp4", "mov", "mkv", "avi"])
         
         if uploaded_file:
             file_size_mb = uploaded_file.size / (1024 * 1024)
@@ -254,19 +277,19 @@ else:
             
             st.info(f"📦 File Size: **{file_size_mb:.2f} MB** | Base Editing Charge: **{size_charge} Coins**")
             
-            process_mode = st.radio("Processing Mode:", ["1. Single Full Video", "2. Anti-Copyright Clipping Mode"])
+            process_mode = st.radio("Processing Mode:", ["1. Full Anti-Copyright Single Video", "2. Anti-Copyright Clipping Mode"])
             
-            if process_mode == "1. Single Full Video":
-                quality_option = st.radio("Export Resolution:", ["480p (Free - 0 Coins)", "720p (5 Coins)", "1080p (10 Coins)"])
+            if process_mode == "1. Full Anti-Copyright Single Video":
+                quality_option = st.radio("Export Quality & Resolution:", ["480p (Free - 0 Coins)", "720p (5 Coins)", "1080p (10 Coins)"])
                 res_map = {"480p (Free - 0 Coins)": (480, "2000k", 0), "720p (5 Coins)": (720, "4000k", 5), "1080p (10 Coins)": (1080, "8000k", 10)}
                 target_height, bitrate, res_charge = res_map[quality_option]
                 
                 total_cost = size_charge + res_charge
-                st.warning(f"🪙 Total Required: **{total_cost} Coins** (Base Editing: {size_charge} + Resolution: {res_charge})")
+                st.warning(f"🪙 Total Deductible: **{total_cost} Coins** (Video Base Charge: {size_charge} + Resolution: {res_charge})")
 
-                if st.button("🚀 Process & Render Video"):
+                if st.button("🚀 Render Anti-Copyright Video"):
                     if user_coins < total_cost and not st.session_state.is_admin:
-                        st.error(f"❌ Coins kam hain! Is process ke liye {total_cost} Coins chahiye.")
+                        st.error(f"❌ Coins Kam Hain! Aapko {total_cost} Coins Chahiye.")
                     else:
                         with RENDER_LOCK:
                             p_bar = st.progress(0)
@@ -282,18 +305,18 @@ else:
                                     save_db(db_data)
                                 
                                 with open(out_path, "rb") as f:
-                                    st.download_button("📥 Download Video", f, file_name=f"edited_{uploaded_file.name}")
-                            except Exception as e: st.error(f"Error: {e}")
+                                    st.download_button("📥 Download Clean Video", f, file_name=f"CR_free_{uploaded_file.name}")
+                            except Exception as e: st.error(f"Error aaya: {e}")
                             finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
             elif process_mode == "2. Anti-Copyright Clipping Mode":
-                interval_sec = st.number_input("Clip Interval (Seconds):", min_value=5, max_value=600, value=15)
+                interval_sec = st.number_input("Clip Length Interval (Seconds):", min_value=5, max_value=600, value=15)
                 total_cost = size_charge
-                st.warning(f"🪙 Required: **{total_cost} Coins**")
+                st.warning(f"🪙 Required Coins: **{total_cost} Coins**")
                 
-                if st.button("✂️ Generate Clips"):
+                if st.button("✂️ Generate Cut Clips"):
                     if user_coins < total_cost and not st.session_state.is_admin:
-                        st.error("❌ Coins kam hain!")
+                        st.error("❌ Balance kam hai!")
                     else:
                         with RENDER_LOCK:
                             temp_in = f"temp_in_{int(time.time())}.mp4"
@@ -307,20 +330,20 @@ else:
                                     out_clip_path = f"{EXPORT_DIR}/clip_{count}_{int(time.time())}.mp4"
                                     subclip.write_videofile(out_clip_path, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
                                     with open(out_clip_path, "rb") as f:
-                                        st.download_button(f"📥 Download Clip {count}", f, file_name=f"Clip_{count}.mp4", key=out_clip_path)
+                                        st.download_button(f"📥 Download Part {count}", f, file_name=f"CR_Clip_{count}.mp4", key=out_clip_path)
                                     curr += interval_sec
                                     count += 1
                                 video.close()
                                 if not st.session_state.is_admin:
                                     db_data["users"][current_user] -= total_cost
                                     save_db(db_data)
-                            except Exception as e: st.error(f"Error: {e}")
+                            except Exception as e: st.error(f"Error aaya: {e}")
                             finally: auto_cleanup_storage_and_memory(temp_file_path=temp_in)
 
-    # 2. FREE CREDITS TASKS MENU
+    # 2. FREE CREDITS TASKS
     elif selected_menu == "🎁 Free Credits Tasks":
         st.subheader("🎁 Get Free Video Credits")
-        st.write("Neeche diye gaye simple tasks complete karke 10-10 Free Credits claim karein!")
+        st.write("Complete tasks below to earn 10 Free Credits per action!")
         
         user_claims = db_data.get("claimed_tasks", {}).get(current_user, [])
         links = db_data.get("admin_links", {})
@@ -328,7 +351,7 @@ else:
         # Task 1: YouTube
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
         st.markdown("### 🔴 Subscribe YouTube Channel (+10 Credits)")
-        st.markdown(f"[👉 Click Here to Subscribe Channel]({links.get('yt_url', '#')})")
+        st.markdown(f"**Step 1:** Open Link & Subscribe Channel: [Subscribe Here]({links.get('yt_url', '#')})")
         if "youtube" in user_claims:
             st.success("✅ Already Claimed!")
         else:
@@ -338,14 +361,14 @@ else:
                 if current_user not in db_data["claimed_tasks"]: db_data["claimed_tasks"][current_user] = []
                 db_data["claimed_tasks"][current_user].append("youtube")
                 save_db(db_data)
-                st.success("🎉 +10 Credits Added!")
+                st.success("🎉 +10 Credits Added Successfully!")
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
         # Task 2: Instagram
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
         st.markdown("### 📸 Follow on Instagram (+10 Credits)")
-        st.markdown(f"[👉 Click Here to Follow Instagram]({links.get('insta_url', '#')})")
+        st.markdown(f"**Step 1:** Follow profile on Instagram: [Follow Here]({links.get('insta_url', '#')})")
         if "instagram" in user_claims:
             st.success("✅ Already Claimed!")
         else:
@@ -355,54 +378,76 @@ else:
                 if current_user not in db_data["claimed_tasks"]: db_data["claimed_tasks"][current_user] = []
                 db_data["claimed_tasks"][current_user].append("instagram")
                 save_db(db_data)
-                st.success("🎉 +10 Credits Added!")
+                st.success("🎉 +10 Credits Added Successfully!")
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Task 3: Watch Video
+        # Task 3: Watch Video (180 Sec timer check)
         st.markdown('<div class="task-card">', unsafe_allow_html=True)
-        st.markdown("### ▶️ Watch Video (+10 Credits)")
-        st.markdown(f"[👉 Click Here to Watch Video]({links.get('video_url', '#')})")
+        st.markdown("### ▶️ Watch Video for 180+ Seconds (+10 Credits)")
+        st.markdown(f"**Requirement:** Minimum 180 Seconds watch required: [Watch Video Here]({links.get('video_url', '#')})")
+        
         if "watch_video" in user_claims:
             st.success("✅ Already Claimed!")
         else:
-            if st.button("Claim 10 Credits (Video)", key="vid_claim"):
-                db_data["users"][current_user] = db_data["users"].get(current_user, 0) + 10
-                if "claimed_tasks" not in db_data: db_data["claimed_tasks"] = {}
-                if current_user not in db_data["claimed_tasks"]: db_data["claimed_tasks"][current_user] = []
-                db_data["claimed_tasks"][current_user].append("watch_video")
-                save_db(db_data)
-                st.success("🎉 +10 Credits Added!")
-                st.rerun()
+            if "vid_timer" not in st.session_state: st.session_state.vid_timer = 0
+            
+            c_timer, c_btn = st.columns([2, 1])
+            with c_timer:
+                if st.button("⏱️ Start 180s Watch Verification Timer"):
+                    st.session_state.vid_timer = time.time()
+                    st.info("⌛ Timer started! Watch video link and return after 180 seconds.")
+            
+            with c_btn:
+                if st.button("Claim 10 Credits (Video Watch)", key="vid_claim"):
+                    elapsed = time.time() - st.session_state.vid_timer
+                    if st.session_state.vid_timer > 0 and elapsed >= 180:
+                        db_data["users"][current_user] = db_data["users"].get(current_user, 0) + 10
+                        if "claimed_tasks" not in db_data: db_data["claimed_tasks"] = {}
+                        if current_user not in db_data["claimed_tasks"]: db_data["claimed_tasks"][current_user] = []
+                        db_data["claimed_tasks"][current_user].append("watch_video")
+                        save_db(db_data)
+                        st.success("🎉 +10 Credits Added Successfully!")
+                        st.rerun()
+                    else:
+                        remaining = int(180 - elapsed) if st.session_state.vid_timer > 0 else 180
+                        st.error(f"⚠️ Watch video minimum 180 seconds! ({remaining}s remaining)")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. BUY COINS & QR PAY
-    elif selected_menu == "🪙 Buy Coins / QR Pay":
-        st.subheader("🪙 Recharge & Prepaid Plans")
+    # 3. RECHARGE & DYNAMIC QR PAY
+    elif selected_menu == "🪙 Recharge & Dynamic QR Pay":
+        st.subheader("🪙 Account Recharge via Dynamic UPI QR")
         links = db_data.get("admin_links", {})
+        active_upi = links.get("upi_id", UPI_ID_TEXT)
         
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.image(links.get("qr_url", "https://i.postimg.cc/P5P1CkHY/no.png"), caption="Scan QR Code to Pay", width=260)
-            st.info(f"💳 Direct UPI ID: `{UPI_ID_TEXT}`")
+        col_pay1, col_pay2 = st.columns([1, 1])
         
-        with c2:
+        with col_pay1:
+            st.markdown("### 1. Payment QR Code")
+            enter_amount = st.number_input("Enter Amount to Recharge (₹):", min_value=10, max_value=5000, value=149)
+            
+            dynamic_qr = generate_upi_qr(active_upi, enter_amount)
+            st.image(dynamic_qr, caption=f"Scan & Pay ₹{enter_amount} to {active_upi}", width=250)
+            st.info(f"💳 Direct UPI ID: `{active_upi}`")
+
+        with col_pay2:
+            st.markdown("### 2. Submit Transaction Proof")
             with st.form("buy_coins_form"):
-                utr_no = st.text_input("Enter Transaction / UTR No.")
-                selected_plan = st.selectbox("Select Coin Pack", ["₹49 - 50 Coins", "₹149 - 200 Coins", "₹249 - 400 Coins", "₹399 - 800 Coins"])
-                if st.form_submit_button("📩 Submit Payment Proof"):
+                utr_no = st.text_input("Enter UTR / Transaction Ref No.")
+                plan_label = f"Recharge Pack - ₹{enter_amount}"
+                if st.form_submit_button("📩 Submit UTR for Admin Approval"):
                     if utr_no.strip():
                         if "pending_requests" not in db_data: db_data["pending_requests"] = []
-                        db_data["pending_requests"].append({"email": current_user, "utr": utr_no.strip(), "plan": selected_plan, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                        db_data["pending_requests"].append({"email": current_user, "utr": utr_no.strip(), "plan": plan_label, "amount": enter_amount, "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
                         save_db(db_data)
-                        st.success("✅ Payment Details Sent for Admin Approval!")
+                        st.success("✅ Payment Details Submitted! Admin will approve coins shortly.")
 
     # 4. OUTPUT LIBRARY
-    elif selected_menu == "📁 Output Library":
-        st.subheader("📁 Output Video Library")
+    elif selected_menu == "📁 Output Library Manager":
+        st.subheader("📁 Output Video Library Manager")
         all_exports = glob.glob(os.path.join(EXPORT_DIR, "*"))
         if not all_exports:
-            st.info("Library khali hai.")
+            st.info("No processed exports available.")
         else:
             for filepath in all_exports:
                 if os.path.isfile(filepath):
@@ -413,38 +458,38 @@ else:
                     with c2: st.write(f"📦 `{fsize} MB`")
                     with c3:
                         with open(filepath, "rb") as f:
-                            st.download_button("📥 Download", f, file_name=fname, key=f"dl_{fname}")
+                            st.download_button("📥 Download File", f, file_name=fname, key=f"dl_{fname}")
                     st.divider()
 
-    # 5. CLEANER
-    elif selected_menu == "🧹 Library Cleaner":
-        st.subheader("🧹 Clear Memory Cache")
-        if st.button("🚨 Clear Storage Cache"):
+    # 5. STORAGE CLEANER
+    elif selected_menu == "🧹 Storage Cleaner":
+        st.subheader("🧹 System Storage & Library Cleaner")
+        if st.button("🚨 Purge Storage Cache"):
             for f in glob.glob(os.path.join(EXPORT_DIR, "*")):
                 try: os.remove(f)
                 except Exception: pass
             gc.collect()
-            st.success("✅ Cache Cleaned!")
+            st.success("✅ Storage Successfully Purged!")
 
-    # 6. CHAT SUPPORT (WITH REPLY VIEW)
-    elif selected_menu == "💬 Chat Support":
-        st.subheader("💬 Private Help & Support")
+    # 6. CHAT SUPPORT
+    elif selected_menu == "💬 Chat Support Desk":
+        st.subheader("💬 Private Support Desk")
         
         tickets = db_data.get("support_tickets", [])
         my_tickets = [t for t in tickets if t.get("user") == current_user]
         
         if my_tickets:
-            st.markdown("### 📩 Your Previous Messages & Admin Replies:")
+            st.markdown("### 📩 Support History & Replies:")
             for t in my_tickets:
                 st.info(f"**You ({t['date']}):** {t['msg']}")
                 if t.get("reply"):
                     st.success(f"**👑 Admin Reply:** {t['reply']}")
                 else:
-                    st.warning("⏳ Admin reply is pending...")
+                    st.warning("⏳ Admin reply pending...")
                 st.divider()
 
         with st.form("send_msg_form"):
-            user_msg = st.text_area("Write Message for Admin:")
+            user_msg = st.text_area("Write Message for Support Admin:")
             if st.form_submit_button("📤 Send Message"):
                 if user_msg.strip():
                     new_ticket = {
@@ -456,42 +501,42 @@ else:
                     }
                     db_data["support_tickets"].append(new_ticket)
                     save_db(db_data)
-                    st.success("Message Sent!")
+                    st.success("Message Submitted!")
                     st.rerun()
 
-    # 7. ADMIN PANEL (FULL CONTROLS)
+    # 7. ADMIN PANEL
     elif selected_menu == "👑 Admin Panel" and st.session_state.is_admin:
-        st.subheader("👑 Master Admin Controls")
+        st.subheader("👑 Master Admin Console")
         
-        tab1, tab2, tab3 = st.tabs(["🔗 Manage Links & QR", "📩 Reply to Messages", "🪙 Pending Payments"])
+        tab1, tab2, tab3 = st.tabs(["🔗 Dynamic Link Settings", "💬 Message Desk", "🪙 Payment Approvals"])
         
-        # LINK & QR MANAGEMENT
+        # TAB 1: LINKS MANAGEMENT
         with tab1:
-            st.markdown("### Update Task Links & QR Image")
+            st.markdown("### Update Task Links & System UPI")
             curr_links = db_data.get("admin_links", {})
             with st.form("links_form"):
-                yt = st.text_input("YouTube Channel Link", value=curr_links.get("yt_url", ""))
-                insta = st.text_input("Instagram Profile Link", value=curr_links.get("insta_url", ""))
-                vid = st.text_input("Watch Video Link", value=curr_links.get("video_url", ""))
-                qr = st.text_input("Payment QR Image Direct URL", value=curr_links.get("qr_url", ""))
+                yt = st.text_input("YouTube Channel Subscribe Link", value=curr_links.get("yt_url", ""))
+                insta = st.text_input("Instagram Follow Profile Link", value=curr_links.get("insta_url", ""))
+                vid = st.text_input("Watch Video Link (180s requirement)", value=curr_links.get("video_url", ""))
+                upi = st.text_input("Default Payment UPI ID", value=curr_links.get("upi_id", UPI_ID_TEXT))
                 
-                if st.form_submit_button("💾 Save All Links"):
-                    db_data["admin_links"] = {"yt_url": yt, "insta_url": insta, "video_url": vid, "qr_url": qr}
+                if st.form_submit_button("💾 Save All Settings"):
+                    db_data["admin_links"] = {"yt_url": yt, "insta_url": insta, "video_url": vid, "upi_id": upi}
                     save_db(db_data)
-                    st.success("✅ All Links & QR Updated!")
+                    st.success("✅ All Links & System UPI Updated!")
 
-        # MESSAGE REPLIES
+        # TAB 2: SUPPORT DESK REPLIES
         with tab2:
-            st.markdown("### Reply to User Messages")
+            st.markdown("### User Messages & Instant Replies")
             tickets = db_data.get("support_tickets", [])
             if not tickets:
-                st.write("No support tickets.")
+                st.write("No active support tickets.")
             for idx, t in enumerate(tickets):
                 st.write(f"👤 **{t['user']}** ({t['date']}): {t['msg']}")
                 if t.get("reply"):
-                    st.write(f" Reply Sent: *{t['reply']}*")
+                    st.write(f"Current Reply: *{t['reply']}*")
                 
-                reply_input = st.text_input(f"Write Reply for ticket #{t['id']}", key=f"rep_{t['id']}")
+                reply_input = st.text_input(f"Write Reply for #{t['id']}", key=f"rep_{t['id']}")
                 if st.button("Send Reply", key=f"btn_rep_{t['id']}"):
                     if reply_input.strip():
                         db_data["support_tickets"][idx]["reply"] = reply_input.strip()
@@ -500,17 +545,19 @@ else:
                         st.rerun()
                 st.divider()
 
-        # PAYMENTS
+        # TAB 3: PAYMENT APPROVALS
         with tab3:
-            st.markdown("### Pending Payment Approvals")
+            st.markdown("### Approve Payment Requests")
             pending_reqs = db_data.get("pending_requests", [])
+            if not pending_reqs:
+                st.write("No pending requests.")
             for idx, req in enumerate(pending_reqs):
-                st.write(f"👤 **{req['email']}** | Pack: **{req['plan']}** | UTR: `{req['utr']}`")
-                add_c = st.number_input("Coins to Add:", min_value=1, value=100, key=f"c_{idx}")
+                st.write(f"👤 **{req['email']}** | Plan: **{req['plan']}** | UTR: `{req['utr']}`")
+                add_c = st.number_input("Credits to Grant:", min_value=1, value=100, key=f"c_{idx}")
                 if st.button("✅ Approve Payment", key=f"app_{idx}"):
                     db_data["users"][req['email']] = db_data["users"].get(req['email'], 0) + add_c
                     db_data["pending_requests"].pop(idx)
                     save_db(db_data)
-                    st.success("Payment Approved & Coins Added!")
+                    st.success("Payment Approved & Credits Granted!")
                     st.rerun()
                 st.divider()
