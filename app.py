@@ -614,15 +614,15 @@ def manual_zoom(clip, zoom_factor):
     return clip.fl_image(zoom_frame)
 
 def apply_custom_effects(clip, edit_num=1):
-    if edit_num in [2, 8]: clip = manual_zoom(clip, 1.10)
+    if edit_num in [2, 8]: clip = manual_zoom(clip, 1.5)
     elif edit_num == 3: clip = clip.speedx(1.1) if hasattr(clip, 'speedx') else clip
     elif edit_num in [4, 13]: clip = clip.fx(vfx.colorx, 0.90) if hasattr(vfx, 'colorx') else clip
     elif edit_num in [5, 11, 15]: clip = clip.fx(vfx.colorx, 1.20) if hasattr(vfx, 'colorx') else clip
     elif edit_num == 6: clip = clip.fl_image(lambda img: img[:, ::-1])
-    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.10) if hasattr(vfx, 'colorx') else clip
-    elif edit_num == 9: clip = clip.speedx(1.15) if hasattr(clip, 'speedx') else clip
+    elif edit_num == 7: clip = clip.fx(vfx.colorx, 1.5) if hasattr(vfx, 'colorx') else clip
+    elif edit_num == 9: clip = clip.speedx(1.5) if hasattr(clip, 'speedx') else clip
     elif edit_num == 10: clip = manual_zoom(clip, 1.05)
-    elif edit_num == 12: clip = manual_zoom(clip, 1.12)
+    elif edit_num == 12: clip = manual_zoom(clip, 1.6)
     elif edit_num == 14:
         clip = clip.fl_image(lambda img: img[:, ::-1])
         if hasattr(clip, 'speedx'): clip = clip.speedx(1.1)
